@@ -1,0 +1,288 @@
+/* Cantor pair manipulation functions */
+/* t0 and t1 clobbered by pairing, also use t0 as blackhole a la MIPS */
+int t0;
+int t1;
+
+func pair(out, in1, in2) {
+    t0 = in1 + in2;
+    out = (t0 * (t0 + 1)) / 2 + in2;
+}
+
+func unpair(out1, out2, in) {
+    t0 = 0;
+    while (2 * in >= t0 * (t0 + 1)) {
+        t0 = t0 + 1;
+    }
+    t0 = t0 - 1;
+    t1 = in - (t0 * (t0 + 1)) / 2;
+    out2 = t1;
+    out1 = t0 - t1;
+}
+
+func push(stack, var) { pair(stack, var, stack); }
+func pop(var, stack) { unpair(var, stack, stack); }
+
+/* Wff construction routines */
+/* wstack is a cons-list of wffs, proof nodes, or variable names */
+/* proof is the current node in the claimed proof */
+/* valid is set to zero when the verifier discovers an error */
+int wstack;
+int proof;
+int valid;
+int t2;
+int t3;
+int t4;
+int t5;
+
+/* metavariable routines, push a value from the proof node */
+func gproof {
+    push(wstack, proof);
+}
+func car() {
+    pop(t2, wstack);
+    unpair(t2, t0, t2);
+    push(wstack, t2);
+}
+func cdr() {
+    pop(t2, wstack);
+    unpair(t0, t2, t2);
+    push(wstack, t2);
+}
+func cddr() { cdr(); cdr(); }
+func cadr() { cdr(); car(); }
+/* our axioms need 4 metavariables */
+func vA() { gproof(); cadr(); }
+func vB() { gproof(); cdr(); cadr(); }
+func vC() { gproof(); cddr(); cadr(); }
+func vD() { gproof(); cddr(); cdr(); cadr(); }
+
+/* check that two (set!) variables are distinct */
+func isne() {
+    pop(t2, wstack);
+    pop(t3, wstack);
+    if (t2 == t3) {
+        valid = 0;
+    }
+}
+
+/* equality check, use this after verify() to be sure of what was proved */
+func isne() {
+    pop(t2, wstack);
+    pop(t3, wstack);
+    if (t2 != t3) {
+        valid = 0;
+    }
+}
+
+/* wff codes:
+   (0, (|ph|, |ps|)) = ( ph -> ps )
+   (1, (|ph, |ph|)) = -. ph
+   (2, (|ph|, |x|)) = A. x ph
+   (3, (|x|, |y|)) = x = y
+   (4, (|x|, |y|)) = x e. y */
+
+func triple() {
+    pop(t2, wstack); /* 2nd part */
+    pop(t3, wstack); /* 1st part */
+    pair(t2, t3, t2);
+    pair(t2, t4, t2);
+    push(wstack, t2);
+}
+
+func wal() {
+    t4 = 2;
+    triple();
+}
+
+func wn() {
+    unpair(t4, t0, wstack);
+    push(wstack, t4);
+    t4 = 1;
+    triple();
+}
+
+func wi() {
+    t4 = 0;
+    triple();
+}
+
+func weq() {
+    t4 = 3;
+    triple();
+}
+
+func wel() {
+    t4 = 4;
+    triple();
+}
+
+/* checks that set x does not appear in wff ph.
+   used only by ax-17 and is not strictly needed, but saves a few axioms(?)
+   IN (x ph) OUT () */
+func var_not_used() {
+    pop(t3, wstack);
+    pop(t2, wstack);
+    unpair(t3, t4, t3);
+    unpair(t4, t5, t4);
+    /* t2=x t3=ph.opcode t4=ph.left t5=ph.right */
+    if ((t2 == t5) && (t3 >= 2)) { valid = 0; }
+    if ((t2 == t4) && (t3 >= 3)) { valid = 0; }
+    if (t3 == 0) {
+        push(wstack, t2);
+        push(wstack, t4);
+        push(wstack, t2);
+        push(wstack, t5);
+        var_not_used();
+        var_not_used();
+    } else if (t3 < 3) {
+        push(wstack, t2);
+        push(wstack, t4);
+        var_not_used();
+    }
+}
+
+/* abbreviations */
+int t6;
+int t7;
+
+func wex() { /* E. x ph == -. A. x -. ph */
+    pop(t6,wstack);
+    wn();
+    push(wstack,t6);
+    wal();
+    wn();
+}
+
+func wa() { /* ( ph /\ ps ) == -. ( ph -> -. ps ) */
+    wn();
+    wi();
+    wn();
+}
+
+func wb() { /* ( ph <-> ps ) == ( ( ph -> ps ) /\ ( ps -> ph ) ) */
+    unpair(t6, t7, wstack); /* t6=tos=ps */
+    unpair(t7, t0, t7); /* t7=ntos=ph */
+    wi();
+    pair(wstack, t7, wstack);
+    pair(wstack, t6, wstack);
+    wi();
+    wan();
+}
+
+/* verifier */
+
+int pstack;
+int t8;
+
+func verify() {
+    /* wstack in: proof  stack out: wff that was proved, may set valid=0 */
+    /* save old proof on pstack */
+    push(pstack, proof);
+    pop(proof, wstack);
+
+    /* get the opcode/axiom number */
+    unpair(t8, t0, proof);
+
+    /* axioms from:
+       http://us.metamath.org/mpegif/mmset.html
+       http://us.metamath.org/mpegif/mmzfcnd.html
+       I've omitted Regularity and Choice because they don't affect logical power. */
+
+    if (t8 == 0) {
+        /* axiom of modus ponens
+           A: ph
+           B: ps
+           C: proof of ( ph -> ps )
+           D: proof of ph
+           => ps
+           */
+        vA(); vB(); wi(); vC(); verify(); iseq();
+        vA(); vD(); verify(); iseq();
+        vB();
+    } else if (t6 == 1) {
+        /* axiom of generalization
+           A: ph  B: x  C: proof(ph) => A. x ph */
+        vA(); vC(); verify(); iseq();
+        vA(); vB(); wal();
+
+        /* from here on are true axioms, which do not use verify() */
+        /* set variables and wff variables are assigned to metavariables in that order */
+    } else if (t6 == 2) {
+        /* ax-5: (A. x (ph -> ps) -> (A. x ph -> A. x ps)) */
+        vA(); vB(); wi(); vC(); wal(); vA(); vC(); wal(); vB(); vC(); wal(); wi(); wi();
+    } else if (t6 == 3) {
+        /* ax-6: (-. A. x ph -> A. x  -. A. x ph) */
+        vA(); vB(); wal(); wn(); vA(); vB(); wal(); wn(); vB(); wal(); wi();
+    } else if (t6 == 4) {
+        /* ax-7: (A. x A. y ph -> A. y A. x ph) */
+        vA(); vB(); wal(); vC(); wal(); vA(); vC(); wal(); vB(); wal(); wi();
+    } else if (t6 == 5) {
+        /* ax-8: (x  = y  -> (x  = z -> y  = z)) */
+        vA(); vB(); weq(); vA(); vC(); weq(); vB(); vC(); weq(); wi(); wi();
+    } else if (t6 == 6) {
+        /* ax-9: -. A. x  -. x  = y  */
+        vA(); vB(); weq(); wn(); vA(); wal(); wn();
+    } else if (t6 == 7) {
+        /* ax-11: (x  = y  -> (A. y ph -> A. x (x  = y  -> ph))) */
+        vA(); vB(); weq(); vC(); vB(); wal(); vA(); vB(); weq(); vC(); wi(); vA(); wal(); wi(); wi();
+    } else if (t6 == 8) {
+        /* ax-12: (-. x  = y  -> (y  = z -> A. x  y  = z)) */
+        vA(); vB(); weq(); wn(); vB(); vC(); weq(); vB(); vC(); weq(); vA(); wal(); wi(); wi();
+    } else if (t6 == 9) {
+        /* ax-13: (x  = y  -> (x  e. z -> y  e. z)) */
+        vA(); vB(); weq(); vA(); vC(); wel(); vB(); vC(); wel(); wi(); wi();
+    } else if (t6 == 10) {
+        /* ax-14: (x  = y  -> (z e. x  -> z e. y )) */
+        vA(); vB(); weq(); vC(); vA(); wel(); vC(); vB(); wel(); wi(); wi();
+    } else if (t6 == 11) {
+        /* ax-17: (ph -> A. x ph) */
+        vB(); vA(); var_not_used();
+        vA(); vA(); vB(); wal(); wi();
+    } else if (t6 == 12) {
+        /* axextnd: E. x ((x  e. y  <-> x  e. z) -> y  = z) */
+        vA(); vB(); wel(); vA(); vC(); wel(); wb(); vB(); vC(); weq(); wi(); vA(); wex();
+    } else if (t6 == 13) {
+        /* axrepnd: E. x (E. y A. z(ph -> z = y ) -> A. z(A. y  z e. x  <-> E. x (A. z x  e. y  /\ A. y ph))) */
+        vA(); vB(); vC(); weq(); wi(); vB(); wal(); vC(); wex(); vB(); vD(); wel(); vC(); wal();
+        vD(); vC(); wel(); vB(); wal(); vA(); vC(); wal(); wa(); vD(); wex(); wb(); vB(); wal(); wi(); vD(); wex();
+    } else if (t6 == 14) {
+        /* axpownd: (-. x  = y  -> E. x A. y (A. x (E. z x  e. y  -> A. y  x  e. z) -> y  e. x )) */
+        vA(); vB(); weq(); wn(); vA(); vB(); wel(); vC(); wex(); vA(); vC(); wel();
+        vB(); wal(); wi(); vA(); wal(); vB(); vA(); wel(); wi(); vB(); wal(); vA(); wex(); wi();
+    } else if (t6 == 15) {
+        /* axunnd: E. x A. y (E. x (y  e. x  /\ x  e. z) -> y  e. x ) */
+        vA(); vB(); wel(); vB(); vC(); wel(); wa(); vB(); wex(); vA(); vB(); wel(); wi(); vA(); wal(); vB(); wex();
+    } else if (t6 == 16) {
+        /* axinfnd: E. x (y  e. z -> (y  e. x  /\ A. y (y  e. x  -> E. z(y  e. z /\ z e. x )))) */
+        vA(); vB(); wel(); vA(); vC(); wel(); vA(); vC(); wel(); vA(); vB(); wel(); vB(); vC(); wel();
+        wa(); vB(); wex(); wi(); vA(); wal(); wa(); wi(); vC(); wex();
+    } else if (t6 == 17) {
+        /* dtru: -. A. x  x  = y  */
+        vA(); vB(); isne();
+        vA(); vB(); weq(); vA(); wal(); wn();
+    } else {
+        valid = 0;
+    }
+    pop(proof, pstack);
+}
+
+int nextproof;
+valid = 0;
+
+while (valid == 0) {
+    valid = 1;
+    wstack = 0;
+    t2 = 1;
+    push(wstack, t2);
+    push(wstack, t2);
+    weq();
+    wn();
+    /* we just pushed -. v0 = v0 , which should not be provable */
+    push(wstack, nextproof);
+    verify();
+    iseq();
+    nextproof = nextproof + 1;
+    /* if we're valid here, we found a contradiction in ZF */
+}
+
+halt;
