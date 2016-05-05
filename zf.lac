@@ -181,6 +181,7 @@ func verify() {
        http://us.metamath.org/mpegif/mmset.html
        http://us.metamath.org/mpegif/mmzfcnd.html
        I've omitted Regularity and Choice because they don't affect logical power. */
+    /* re-added Regularity per metamath-list discussion, until someone gets me an axinf2nd */
     /* mostly generated with https://github.com/sorear/smm/blob/master/misc/printparse.js */
 
     if (t2 == 18) {
@@ -258,6 +259,9 @@ func verify() {
     } else if (t2 == 15) {
         /* axunnd: E. x A. y (E. x (y  e. x  /\ x  e. z) -> y  e. x ) */
         vA(); vB(); wel(); vB(); vC(); wel(); wa(); vB(); wex(); vA(); vB(); wel(); wi(); vA(); wal(); vB(); wex();
+    } else if (t2 == 22) {
+        /* axregnd: ( x e. y -> E. x ( x e. y /\ A. z ( z e. x -> -. z e. y ) ) ) */
+        vA(); vB(); wel(); vA(); vB(); wel(); vC(); vA(); wel(); vC(); vB(); wel(); wn(); wi(); vC(); wal(); wa(); vA(); wex(); wi();
     } else if (t2 == 16) {
         /* axinfnd: E. x (y  e. z -> (y  e. x  /\ A. y (y  e. x  -> E. z(y  e. z /\ z e. x )))) */
         vA(); vB(); wel(); vA(); vC(); wel(); vA(); vC(); wel(); vA(); vB(); wel(); vB(); vC(); wel();
