@@ -181,6 +181,7 @@ func verify() {
        http://us.metamath.org/mpegif/mmset.html
        http://us.metamath.org/mpegif/mmzfcnd.html
        I've omitted Regularity and Choice because they don't affect logical power. */
+    /* mostly generated with https://github.com/sorear/smm/blob/master/misc/printparse.js */
 
     if (t2 == 18) {
         /* axiom of modus ponens
@@ -203,6 +204,15 @@ func verify() {
 
         /* from here on are true axioms, which do not use verify() */
         /* set variables and wff variables are assigned to metavariables in that order */
+    } else if (t2 == 19) {
+        /* ax-1: ( ph -> ( ps -> ph ) ) */
+        vA(); vB(); vA(); wi(); wi();
+    } else if (t2 == 20) {
+        /* ax-2: ( ( ph -> ( ps -> ch ) ) -> ( ( ph -> ps ) -> ( ph -> ch ) ) ) */
+        vA(); vB(); vC(); wi(); wi(); vA(); vB(); wi(); vA(); vC(); wi(); wi(); wi();
+    } else if (t2 == 21) {
+        /* ax-3: ( ( -. ph -> -. ps ) -> ( ps -> ph ) ) */
+        vA(); wn(); vB(); wn(); wi(); vB(); vA(); wi(); wi();
     } else if (t2 == 2) {
         /* ax-5: (A. x (ph -> ps) -> (A. x ph -> A. x ps)) */
         vA(); vB(); wi(); vC(); wal(); vA(); vC(); wal(); vB(); vC(); wal(); wi(); wi();
