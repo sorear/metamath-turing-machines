@@ -75,11 +75,11 @@ func isne() {
 }
 
 /* wff codes:
-   (0, (|ph|, |ps|)) = ( ph -> ps )
-   (1, (|ph, |ph|)) = -. ph
-   (2, (|ph|, |x|)) = A. x ph
-   (3, (|x|, |y|)) = x = y
-   (4, (|x|, |y|)) = x e. y */
+   (1, (|ph|, |ps|)) = ( ph -> ps )
+   (2, (|ph, |ph|)) = -. ph
+   (3, (|ph|, |x|)) = A. x ph
+   (4, (|x|, |y|)) = x = y
+   (5, (|x|, |y|)) = x e. y */
 
 func triple() {
     pop(t2, wstack); /* 2nd part */
@@ -90,29 +90,29 @@ func triple() {
 }
 
 func wal() {
-    t4 = 2;
+    t4 = 3;
     triple();
 }
 
 func wn() {
     unpair(t4, t0, wstack);
     push(wstack, t4);
-    t4 = 1;
+    t4 = 2;
     triple();
 }
 
 func wi() {
-    t4 = 0;
+    t4 = 1;
     triple();
 }
 
 func weq() {
-    t4 = 3;
+    t4 = 4;
     triple();
 }
 
 func wel() {
-    t4 = 4;
+    t4 = 5;
     triple();
 }
 
@@ -125,16 +125,16 @@ func var_not_used() {
     unpair(t3, t4, t3);
     unpair(t4, t5, t4);
     /* t2=x t3=ph.opcode t4=ph.left t5=ph.right */
-    if ((t2 == t5) && (t3 >= 2)) { valid = 0; }
-    if ((t2 == t4) && (t3 >= 3)) { valid = 0; }
-    if (t3 == 0) {
+    if ((t2 == t5) && (t3 >= 3)) { valid = 0; }
+    if ((t2 == t4) && (t3 >= 4)) { valid = 0; }
+    if (t3 == 1) {
         push(wstack, t2);
         push(wstack, t4);
         push(wstack, t2);
         push(wstack, t5);
         var_not_used();
         var_not_used();
-    } else if (t3 < 3) {
+    } else if (t3 < 4) {
         push(wstack, t2);
         push(wstack, t4);
         var_not_used();
@@ -182,7 +182,7 @@ func verify() {
        http://us.metamath.org/mpegif/mmzfcnd.html
        I've omitted Regularity and Choice because they don't affect logical power. */
 
-    if (t2 == 0) {
+    if (t2 == 18) {
         /* axiom of modus ponens
            A: ph
            B: ps
