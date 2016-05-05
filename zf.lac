@@ -171,24 +171,18 @@ func wb() { /* ( ph <-> ps ) == ( ( ph -> ps ) /\ ( ps -> ph ) ) */
 
 /* verifier */
 
-int pstack;
-int t8;
-
 func verify() {
     /* wstack in: proof  stack out: wff that was proved, may set valid=0 */
-    /* save old proof on pstack */
-    push(pstack, proof);
-    pop(proof, wstack);
-
     /* get the opcode/axiom number */
-    unpair(t8, t0, proof);
+    pop(proof, wstack);
+    unpair(t2, t0, proof);
 
     /* axioms from:
        http://us.metamath.org/mpegif/mmset.html
        http://us.metamath.org/mpegif/mmzfcnd.html
        I've omitted Regularity and Choice because they don't affect logical power. */
 
-    if (t8 == 0) {
+    if (t2 == 0) {
         /* axiom of modus ponens
            A: ph
            B: ps
@@ -196,67 +190,69 @@ func verify() {
            D: proof of ph
            => ps
            */
-        vA(); vB(); wi(); vC(); verify(); iseq();
-        vA(); vD(); verify(); iseq();
+        /* doing this in a weird order so that we don't reference "proof" after the recursive call */
         vB();
-    } else if (t6 == 1) {
+        vA(); vB(); wi(); vC();
+        vA(); vD(); verify(); iseq();
+        verify(); iseq();
+    } else if (t2 == 1) {
         /* axiom of generalization
            A: ph  B: x  C: proof(ph) => A. x ph */
-        vA(); vC(); verify(); iseq();
         vA(); vB(); wal();
+        vA(); vC(); verify(); iseq();
 
         /* from here on are true axioms, which do not use verify() */
         /* set variables and wff variables are assigned to metavariables in that order */
-    } else if (t6 == 2) {
+    } else if (t2 == 2) {
         /* ax-5: (A. x (ph -> ps) -> (A. x ph -> A. x ps)) */
         vA(); vB(); wi(); vC(); wal(); vA(); vC(); wal(); vB(); vC(); wal(); wi(); wi();
-    } else if (t6 == 3) {
+    } else if (t2 == 3) {
         /* ax-6: (-. A. x ph -> A. x  -. A. x ph) */
         vA(); vB(); wal(); wn(); vA(); vB(); wal(); wn(); vB(); wal(); wi();
-    } else if (t6 == 4) {
+    } else if (t2 == 4) {
         /* ax-7: (A. x A. y ph -> A. y A. x ph) */
         vA(); vB(); wal(); vC(); wal(); vA(); vC(); wal(); vB(); wal(); wi();
-    } else if (t6 == 5) {
+    } else if (t2 == 5) {
         /* ax-8: (x  = y  -> (x  = z -> y  = z)) */
         vA(); vB(); weq(); vA(); vC(); weq(); vB(); vC(); weq(); wi(); wi();
-    } else if (t6 == 6) {
+    } else if (t2 == 6) {
         /* ax-9: -. A. x  -. x  = y  */
         vA(); vB(); weq(); wn(); vA(); wal(); wn();
-    } else if (t6 == 7) {
+    } else if (t2 == 7) {
         /* ax-11: (x  = y  -> (A. y ph -> A. x (x  = y  -> ph))) */
         vA(); vB(); weq(); vC(); vB(); wal(); vA(); vB(); weq(); vC(); wi(); vA(); wal(); wi(); wi();
-    } else if (t6 == 8) {
+    } else if (t2 == 8) {
         /* ax-12: (-. x  = y  -> (y  = z -> A. x  y  = z)) */
         vA(); vB(); weq(); wn(); vB(); vC(); weq(); vB(); vC(); weq(); vA(); wal(); wi(); wi();
-    } else if (t6 == 9) {
+    } else if (t2 == 9) {
         /* ax-13: (x  = y  -> (x  e. z -> y  e. z)) */
         vA(); vB(); weq(); vA(); vC(); wel(); vB(); vC(); wel(); wi(); wi();
-    } else if (t6 == 10) {
+    } else if (t2 == 10) {
         /* ax-14: (x  = y  -> (z e. x  -> z e. y )) */
         vA(); vB(); weq(); vC(); vA(); wel(); vC(); vB(); wel(); wi(); wi();
-    } else if (t6 == 11) {
+    } else if (t2 == 11) {
         /* ax-17: (ph -> A. x ph) */
         vB(); vA(); var_not_used();
         vA(); vA(); vB(); wal(); wi();
-    } else if (t6 == 12) {
+    } else if (t2 == 12) {
         /* axextnd: E. x ((x  e. y  <-> x  e. z) -> y  = z) */
         vA(); vB(); wel(); vA(); vC(); wel(); wb(); vB(); vC(); weq(); wi(); vA(); wex();
-    } else if (t6 == 13) {
+    } else if (t2 == 13) {
         /* axrepnd: E. x (E. y A. z(ph -> z = y ) -> A. z(A. y  z e. x  <-> E. x (A. z x  e. y  /\ A. y ph))) */
         vA(); vB(); vC(); weq(); wi(); vB(); wal(); vC(); wex(); vB(); vD(); wel(); vC(); wal();
         vD(); vC(); wel(); vB(); wal(); vA(); vC(); wal(); wa(); vD(); wex(); wb(); vB(); wal(); wi(); vD(); wex();
-    } else if (t6 == 14) {
+    } else if (t2 == 14) {
         /* axpownd: (-. x  = y  -> E. x A. y (A. x (E. z x  e. y  -> A. y  x  e. z) -> y  e. x )) */
         vA(); vB(); weq(); wn(); vA(); vB(); wel(); vC(); wex(); vA(); vC(); wel();
         vB(); wal(); wi(); vA(); wal(); vB(); vA(); wel(); wi(); vB(); wal(); vA(); wex(); wi();
-    } else if (t6 == 15) {
+    } else if (t2 == 15) {
         /* axunnd: E. x A. y (E. x (y  e. x  /\ x  e. z) -> y  e. x ) */
         vA(); vB(); wel(); vB(); vC(); wel(); wa(); vB(); wex(); vA(); vB(); wel(); wi(); vA(); wal(); vB(); wex();
-    } else if (t6 == 16) {
+    } else if (t2 == 16) {
         /* axinfnd: E. x (y  e. z -> (y  e. x  /\ A. y (y  e. x  -> E. z(y  e. z /\ z e. x )))) */
         vA(); vB(); wel(); vA(); vC(); wel(); vA(); vC(); wel(); vA(); vB(); wel(); vB(); vC(); wel();
         wa(); vB(); wex(); wi(); vA(); wal(); wa(); wi(); vC(); wex();
-    } else if (t6 == 17) {
+    } else if (t2 == 17) {
         /* dtru: -. A. x  x  = y  */
         vA(); vB(); isne();
         vA(); vB(); weq(); vA(); wal(); wn();
