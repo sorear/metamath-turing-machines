@@ -53,6 +53,27 @@ def lazy(func):
 
     return property(getter)
 
+label = namedtuple('label', ['name'])
+goto = namedtuple('goto', ['name'])
+
+class Subroutine:
+    def __init__(self, entry, order, name, fakelevel = None, fakefunc = None):
+        self.entry = entry
+        self.name = name
+        self.order = order
+        self.fakelevel = fakelevel
+        self.fakefunc = fakefunc
+
+def make_dispatcher(child_map, name, order, at_prefix = ''):
+    if child_map[at_prefix]:
+        return child_map[at_prefix].entry
+    assert len(at_prefix) <= order
+    switch = State()
+    switch.be(move = 1, name = name + '[' + at_prefix + ']',
+        next0 = make_dispatcher(child_map, name, order, at_prefix + '0'),
+        next1 = make_dispatcher(child_map, name, order, at_prefix + '1'))
+    return switch
+
 class MachineBuilder:
     pc_bits = 0
     quick = 0
@@ -62,6 +83,9 @@ class MachineBuilder:
     # Quick=3: Simulate compressed register machine
     # Quick=4: as Quick=3 except subroutines can cheat
     # Quick=5: subroutines can cheat to the extent of storing non-integers
+
+    def __init__(self):
+        self._noop = []
 
     # leaf procs which implement shifting and register machine operations
     # on entry to a leaf proc the tape head is just after the PC
@@ -89,7 +113,20 @@ class MachineBuilder:
         # Fall into nextstate()
         # (handled in common_reset)
 
-        return scan_fence
+        return Subroutine(scan_fence, 0, 'cursor_left')
+
+    @lazy
+    def cursor_home(self):
+        (scan_fence, scan_fence_0, scan_cursor, scan_lend,
+            scan_reg) = State() for range(5)
+        # Just skip to the end and clear all the cursor bits
+        scan_fence_0.be(move=1, next=scan_cursor, name='home.scan.fence_0')
+        scan_cursor.be(move=1, next=scan_lend, write='0', name='home.scan.cursor')
+        scan_lend.be(move=1, next=scan_reg, name='home.scan.lend')
+        scan_reg.be(move=1, next0=scan_fence, next1=scan_reg, name='home.scan.reg')
+        scan_fence.be(move0=-1, next0=self.common_reset.rend, move1=1, next=scan_cursor, name='home.scan.fence')
+
+        return Subroutine(scan_fence_0, 0, 'cursor_home')
 
     @lazy
     def cursor_right(self):
@@ -109,7 +146,7 @@ class MachineBuilder:
         move_reg.be(move=1, next0=move_fence, next1=move_reg, name='right.move.reg')
         move_fence.be(move=-1, next=self.common_reset.rend, write='0', name='right.move.fence')
 
-        return scan_fence
+        return Subroutine(scan_fence, 0, 'cursor_right')
 
     @lazy
     def cursor_incr(self):
@@ -131,7 +168,7 @@ class MachineBuilder:
         shift_reg_0.be(move=1, write='0', next0=shift_fence, next1=shift_reg_1, name='incr.shift.reg_0')
 
         # scroll back (handled in common_reset)
-        return scan_fence
+        return Subroutine(scan_fence, 0, 'cursor_incr')
 
     @lazy
     def cursor_decr(self):
@@ -169,7 +206,7 @@ class MachineBuilder:
 
         fixup_lend.be(write='0', move=-1, next=self.common_reset.cursor_skip, name='decr.fixup.lend')
 
-        return scan_fence
+        return Subroutine(scan_fence, 0, 'cursor_decr')
 
     @lazy
     def common_reset(self):
@@ -188,6 +225,7 @@ class MachineBuilder:
         reset2_reg.be(move=-1, next0=reset2_cursor, next1=reset2_reg, name='resetskip.reg')
         reset2_cursor.be(move=-1, next=reset2_fence, name='resetskip.cursor')
 
+        # this is not a subroutine!
         return namedtuple('common_reset', ['cursor_skip', 'fence',
             'rend'])(reset2_cursor, reset_fence, reset_rend)
 
@@ -210,7 +248,7 @@ class MachineBuilder:
         return nextstate_2
 
     @lazy
-    def self.dispatch_order(self):
+    def dispatch_order(self):
         table = [[State() for range(2)] for range(self.pc_bits)]
 
         table[self.pc_bits] = [self.dispatchroot, self.dispatchroot]
@@ -221,4 +259,62 @@ class MachineBuilder:
                 next1=table[bit+1][1] move=-1, name='dispatch.'+bit+'.carry')
 
         return table
+
+    def noop(self, order):
+        reverse = State()
+        reverse.be(move=-1, next=self.dispatch_order[order][1], name='noop.'+order)
+        return Subroutine(reverse, order, 'noop.'+order)
+
+    def jump(self, rel_pc):
+        steps = [State() for range(len(rel_pc) + 1)]
+        steps[0].be(move=-1, next=steps[1], name='jump.{}.0'.format(rel_pc))
+        steps[len(rel_pc)+1] = self.dispatch_order[len(rel_pc)][0]
+        for i in range(len(rel_pc)):
+            steps[i+1].be(move=-1, next=steps[i+2], write=rel_pc[-i-1],
+                name='jump.{}.{}'.format(rel_pc, i+1))
+
+        return Subroutine(steps[0], 0, 'jump.{}'.format(rel_pc))
+
+    def makesub(self, *parts, name):
+        # first find out where everything is and how big I am
+
+        label_offsets = {}
+        real_parts = []
+        offset = 0
+
+        for part in parts:
+            if isinstance(part, label):
+                # labels take up no space
+                label_offsets[part.name] = offset
+                continue
+
+            size = 1 if isinstance(part, goto) else 1 << part.order
+
+            # parts must be aligned
+            while offset % size:
+                noop_order = (offset & -offset).bit_length() - 1
+                offset += 1 << noop_order
+                real_parts.push(self.noop(noop_order))
+
+            real_parts.push(part)
+
+        order = 0
+        while offset > (1 << order):
+            order += 1
+
+        while offset < (1 << order):
+            noop_order = (offset & -offset).bit_length() - 1
+            offset += 1 << noop_order
+            real_parts.push(self.noop(noop_order))
+
+        offset = 0
+        child_map = {}
+
+        for part in real_parts:
+            if isinstance(part, goto):
+                assert part.name in label_offsets
+                part = self.jump('{:0{order}b}'.format(label_offsets[part.name], order = order))
+            child_map['{:0{order}b}'.format(offset >> part.order, order = order - part.order)] = part
+
+        return Subroutine(make_dispatcher(child_map, name), order, name)
 
