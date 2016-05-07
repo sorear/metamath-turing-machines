@@ -1,0 +1,64 @@
+# High level description of self-modifying register machine with activation stack
+
+fetch:
+    pc -> iaddr
+    idata -> insn, scratch0
+    scratch0 -> idata
+    iaddr -> pc
+    inc(pc)
+
+    dec(insn, do_ret)
+    # TODO handle other ground instructions
+
+    # Else a call
+    sp -> iaddr
+    pc -> idata
+    iaddr -> sp
+    inc(sp)
+    insn -> pc
+    goto fetch
+
+do_inc:
+    pc -> iaddr
+    idata -> insn, scratch0
+    scratch0 -> idata
+    inc(iaddr)
+    idata -> pc, scratch0
+    inc(pc)
+    scratch0 -> idata
+    iaddr ->
+    insn -> iaddr
+    inc(idata)
+    iaddr ->
+    goto fetch
+
+do_dec:
+    pc -> iaddr
+    idata -> insn, scratch0
+    scratch0 -> idata
+    inc(iaddr)
+    idata -> pc, scratch0
+    scratch0 -> idata
+    inc(iaddr)
+    idata -> scratch1, scratch0
+    scratch0 -> idata
+    iaddr ->
+    insn -> iaddr
+    dec(idata, do_dec_failed)
+    iaddr ->
+    scratch1 ->
+    goto fetch
+
+do_dec_failed:
+    iaddr ->
+    pc ->
+    scratch1 -> pc
+    goto fetch
+
+do_ret:
+    dec(sp, ERROR)
+    sp -> iaddr
+    pc ->
+    idata -> pc
+    iaddr -> sp
+    goto fetch
