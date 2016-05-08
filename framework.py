@@ -150,7 +150,7 @@ class MachineBuilder:
         # the right fence -> clear !fence bit on where we landed.
         move_lend.be(move=1, next=move_reg, name='right.move.lend')
         move_reg.be(move=1, next0=move_fence, next1=move_reg, name='right.move.reg')
-        move_fence.be(move=-1, next=self.common_reset().rend, write='0', name='right.move.fence')
+        move_fence.be(move=-1, next=self.common_reset().rend, write='1', name='right.move.fence')
 
         return Subroutine(scan_fence, 0, 'cursor_right')
 
@@ -158,7 +158,7 @@ class MachineBuilder:
     def cursor_incr(self):
         (scan_fence, scan_cursor, scan_lend, scan_reg, shift_start_lend,
             shift_reg_1, shift_fence, shift_cursor, shift_lend,
-            shift_reg_0) = (State() for i in range(10))
+            shift_reg_0, exit_fence) = (State() for i in range(11))
         # find the cursor
         scan_fence.be(move=1, next=scan_cursor, name='incr.scan.fence')
         scan_cursor.be(move=1, next1=scan_lend, next0=shift_start_lend, name='incr.scan.cursor')
@@ -168,10 +168,11 @@ class MachineBuilder:
         # insert a 1 and shift everything right until the fence
         shift_start_lend.be(move=1, next=shift_reg_1, name='incr.shift.start_lend')
         shift_reg_1.be(move=1, write='1', next0=shift_fence, next1=shift_reg_1, name='incr.shift.reg_1')
-        shift_fence.be(move=1, write='0', next0=self.common_reset().rend, next1=shift_cursor, name='incr.shift.fence')
+        shift_fence.be(move=1, write='0', next0=exit_fence, next1=shift_cursor, name='incr.shift.fence')
         shift_cursor.be(move=1, write='1', next=shift_lend, name='incr.shift.cursor')
         shift_lend.be(move=1, write='0', next=shift_reg_0, name='incr.shift.lend')
         shift_reg_0.be(move=1, write='0', next0=shift_fence, next1=shift_reg_1, name='incr.shift.reg_0')
+        exit_fence.be(move=-1, next=self.common_reset().rend, name='incr.exit.fence')
 
         # scroll back (handled in common_reset)
         return Subroutine(scan_fence, 0, 'cursor_incr')
@@ -254,7 +255,7 @@ class MachineBuilder:
     @memo
     def dispatch_order(self, order, carry_bit):
         if order == self.pc_bits:
-            return self.dispatchroot()
+            return State(move=+1, next=self.dispatchroot(), name='!ENTRY')
         assert order < self.pc_bits
         if carry_bit:
             return State(write0 = '1', next0 = self.dispatch_order(order + 1, 0),
@@ -370,13 +371,13 @@ class Machine:
     def __init__(self, builder):
         self.builder = builder
         self.main = builder.main()
-        self.entry = self.main.entry
 
         if self.main.order != builder.pc_bits:
             print('pc_bits does not match calculated main order:', self.main.order, builder.pc_bits)
             assert False
 
-        self.builder.dispatchroot().clone(self.entry)
+        self.builder.dispatchroot().clone(self.main.entry)
+        self.entry = self.builder.dispatch_order(self.builder.pc_bits, 0)
 
     def harness(self):
         self.print_machine()
@@ -401,7 +402,7 @@ class Machine:
 
     def print_machine(self):
         dir = { 1: 'R', -1: 'L' }
-        for state in self.reachable():
+        for state in sorted(self.reachable(), key=lambda x: x.name):
             print(state.name, '=',
                 state.write0, dir[state.move0], state.next0.name,
                 state.write1, dir[state.move1], state.next1.name)
@@ -414,7 +415,7 @@ class Machine:
         self.longest_label = max(len(state.name) for state in self.reachable())
 
     def tm_print(self):
-        tape = ' '.join(self.left_tape) + '[' + self.current_tape + ']' + ' '.join(reversed(self.right_tape))
+        tape = ''.join(' ' + x for x in self.left_tape) + '[' + self.current_tape + ']' + ' '.join(reversed(self.right_tape))
         print('{state:{len}} {tape}'.format(len=self.longest_label, state=self.state.name, tape=tape))
 
     def tm_step(self):
