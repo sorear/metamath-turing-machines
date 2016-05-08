@@ -11,9 +11,11 @@
 # you, add an extra state to shift right at the beginning.
 
 from collections import namedtuple
+import argparse
 
 class Halt:
-    pass
+    def __init__(self):
+        self.name = 'HALT'
 
 class State:
     def __init__(self, **kwargs):
@@ -266,6 +268,10 @@ class MachineBuilder:
         return Subroutine(reverse, order, 'noop.'+order)
 
     @memo
+    def halt(self):
+        return Subroutine(Halt(), 0, 'halt')
+
+    @memo
     def jump(self, rel_pc):
         steps = [State() for range(len(rel_pc) + 1)]
         steps[0].be(move=-1, next=steps[1], name='jump.{}.0'.format(rel_pc))
@@ -276,6 +282,7 @@ class MachineBuilder:
 
         return Subroutine(steps[0], 0, 'jump.{}'.format(rel_pc))
 
+    # TODO: subprogram compilation needs to be substantially lazier in order to do effective inlining and register allocation
     def makesub(self, *parts, name):
         # first find out where everything is and how big I am
 
@@ -319,3 +326,113 @@ class MachineBuilder:
 
         return Subroutine(make_dispatcher(child_map, name), order, name)
 
+    # Utilities...
+    def regfile(self, *regs):
+        Register = namedtuple('Register', 'name index inc dec')
+        for index, name in enumerate(regs):
+            pad = 0
+            # the dec routine needs to be a power of two size, or else the invisible end padding will interfere with skip-next semantics
+            while (index + pad + 2) & (index + pad + 1):
+                pad += 1
+
+            inc = self.makesub(name = 'inc.' + name,
+                self.cursor_home(),
+                * index * (self.cursor_right(),),
+                * pad * (self.noop(0),),
+                self.cursor_incr())
+            )
+
+            dec = self.makesub(name = 'dec.' + name,
+                self.cursor_home(),
+                * index * (self.cursor_right(),),
+                * pad * (self.noop(0),),
+                self.cursor_decr())
+            )
+
+            setattr(self, name, Register(name, index, inc, dec))
+
+        @memo
+        def transfer(self, from, *to):
+            name = 'transfer(' + ','.join(from.name, *(x.name for x in to)) + ')'
+            return Subroutine(name=name,
+                label('again'),
+                from.dec,
+                goto('zero'),
+                *(tox.inc for tox in to),
+                goto('again'),
+                label('zero'),
+                self.noop(0), # TODO jumping to end of function NYI
+            )
+
+class Machine:
+    def __init__(self, builder):
+        self.builder = builder
+        self.main = builder.main()
+        self.entry = self.main.entry
+
+        if self.main.order != builder.pc_bits:
+            print('pc_bits does not match calculated main order:', self.main.order, builder.pc_bits)
+            assert False
+
+    def harness(self):
+        self.print_machine()
+
+        self.tm_init()
+        while isinstance(self.state, State):
+            self.tm_step()
+
+    def reachable(self):
+        queue = [self.entry]
+        seen = []
+        seen_set = set()
+        while queue:
+            state = queue.pop()
+            if isinstance(state, Halt) or state in seen_set:
+                continue
+            seen_set.add(state)
+            seen.push(state)
+            queue.push(state.next1)
+            queue.push(state.next0)
+        return seen
+
+    def print_machine(self):
+        dir = { 1: 'R', -1: 'L' }
+        for state in self.reachable():
+            print(state.name, '=',
+                state.write0, dir[state.move0], state.next0.name,
+                state.write1, dir[state.move1], state.next1.name)
+
+    def tm_init(self):
+        self.state = self.entry
+        self.left_tape = []
+        self.current_tape = '0'
+        self.right_tape = []
+        self.longest_label = max(len(state.name) for state in self.reachable())
+
+    def tm_print(self):
+        tape = []
+        tape.extend(reversed(self.left_tape))
+        tape.push('[' + self.current_tape + ']')
+        tape.extend(self.right_tape)
+        print('{-{len}state} {tape}'.format(len=self.longest_label, state=self.state.name, tape=' '.join(tape)))
+
+    def tm_step(self):
+        self.tm_print()
+        state = self.state
+
+        if self.current_tape == '0':
+            write, move, next = state.write0, state.move0, state.next0
+        else:
+            write, move, next = state.write1, state.move1, state.next1
+
+        self.current_tape = write
+        self.state = next
+
+        if move == 1:
+            self.left_tape.push(self.current_tape)
+            self.current_tape = self.right_tape.pop() if self.right_tape else '0'
+        elif move == -1:
+            self.right_tape.push(self.current_tape)
+            self.current_tape = self.left_tape.pop() if self.left_tape else '0'
+        else:
+            assert False
