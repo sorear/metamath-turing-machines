@@ -1,18 +1,13 @@
+#!/usr/bin/python3
 from framework import *
 
 # Let's check whether or not all squares are less than 5
 
 class SquaresAreSmall(MachineBuilder):
+    pc_bits = 8
     def __init__(self):
+        super().__init__()
         self.regfile('a', 'b', 'c', 'd')
-
-    @memo
-    def square(self, y, x):
-        #y = x * x
-        return self.makesub(name = 'square({},{})'.format(x.name, y.name),
-            self.transfer(x, self.t0, self.t1),
-            self.transfer(self.t0, x)
-        )
 
     @memo
     def main(self):
@@ -20,7 +15,7 @@ class SquaresAreSmall(MachineBuilder):
         #     square(a, b)
         #     incr(a)
         #     print b
-        return self.makesub(name='main()',
+        return self.makesub(
             label('again'),
             # square a
             self.transfer(self.a, self.b, self.c),
@@ -35,13 +30,13 @@ class SquaresAreSmall(MachineBuilder):
             label('mulend'),
             # c=a*a
             self.c.dec,
-            self.nop(0),
+            self.noop(0),
             self.c.dec,
-            self.nop(0),
+            self.noop(0),
             self.c.dec,
-            self.nop(0),
+            self.noop(0),
             self.c.dec,
-            self.nop(0),
+            self.noop(0),
             # c = a*a-4
             self.c.dec,
             goto('lessthan5'),
@@ -50,6 +45,7 @@ class SquaresAreSmall(MachineBuilder):
             self.transfer(self.c),
             self.a.inc,
             goto('again'),
+            name='main()',
         )
 
 Machine(SquaresAreSmall()).harness()

@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 # Tape layout: PC:bit[NNN] ( !fence:bit lcursor:bit 0 1* 0 )* .
 # each thing after the PC is a unary register.
 # to make initial tape state (all zero) useful, fence is active low and cursor
@@ -19,12 +20,13 @@ class Halt:
 
 class State:
     def __init__(self, **kwargs):
+        self.set = False
         if kwargs:
             self.be(**kwargs)
 
-    def be(self, name, move = None, next = None, write = None,
-            move0 = None, next0 = None, write0 = None,
-            move1 = None, next1 = None, write1 = None):
+    def be(self, name, move=None, next=None, write=None,
+           move0=None, next0=None, write0=None,
+           move1=None, next1=None, write1=None):
         assert not self.set
         self.set = True
         self.name = name
@@ -34,10 +36,10 @@ class State:
         self.next1 = next1 or next
         self.write0 = write0 or write or '0'
         self.write1 = write1 or write or '1'
-        assert self.move0 in -1, 1
-        assert self.move1 in -1, 1
-        assert self.write0 in '0', '1'
-        assert self.write1 in '0', '1'
+        assert self.move0 in (-1, 1)
+        assert self.move1 in (-1, 1)
+        assert self.write0 in ('0', '1')
+        assert self.write1 in ('0', '1')
         assert isinstance(self.name, str)
         assert isinstance(self.next0, State) or isinstance(self.next0, Halt)
         assert isinstance(self.next1, State) or isinstance(self.next1, Halt)
@@ -45,8 +47,8 @@ class State:
     def clone(self, other):
         assert isinstance(other, State) and other.set
         self.be(name=other.name, move0=other.move0, next0=other.next0,
-            write0=other.write0, move1=other.move1, next1=other.next1,
-            write1=other.write1)
+                write0=other.write0, move1=other.move1, next1=other.next1,
+                write1=other.write1)
 
 def memo(func):
     def wrapper(self, *args):
@@ -61,7 +63,7 @@ label = namedtuple('label', ['name'])
 goto = namedtuple('goto', ['name'])
 
 class Subroutine:
-    def __init__(self, entry, order, name, fakelevel = None, fakefunc = None):
+    def __init__(self, entry, order, name, fakelevel=None, fakefunc=None):
         self.entry = entry
         self.name = name
         self.order = order
@@ -69,7 +71,7 @@ class Subroutine:
         self.fakefunc = fakefunc
 
 def make_dispatcher(child_map, name, order, at_prefix = ''):
-    if child_map[at_prefix]:
+    if at_prefix in child_map:
         return child_map[at_prefix].entry
     assert len(at_prefix) <= order
     switch = State()
@@ -98,7 +100,7 @@ class MachineBuilder:
     @memo
     def cursor_left(self):
         (scan_fence, scan_cursor, scan_lend, scan_reg, move_fence,
-            move_rend, move_reg, move_cursor) = State() for range(8)
+            move_rend, move_reg, move_cursor) = (State() for x in range(8))
         # Skip right until we find the register with cursor=0
         scan_fence.be(move=1, next=scan_cursor, name='left.scan.fence')
         scan_cursor.be(move0=-1, next0=move_fence,   move1=1, next1=scan_lend, name='left.scan.cursor')
@@ -122,7 +124,7 @@ class MachineBuilder:
     @memo
     def cursor_home(self):
         (scan_fence, scan_fence_0, scan_cursor, scan_lend,
-            scan_reg) = State() for range(5)
+            scan_reg) = (State() for i in range(5))
         # Just skip to the end and clear all the cursor bits
         scan_fence_0.be(move=1, next=scan_cursor, name='home.scan.fence_0')
         scan_cursor.be(move=1, next=scan_lend, write='0', name='home.scan.cursor')
@@ -136,7 +138,7 @@ class MachineBuilder:
     def cursor_right(self):
         # this is the only place we adjust the fences
         (scan_fence, scan_cursor, scan_lend, scan_reg, move_lend, move_reg,
-            move_fence) = State() for range(7)
+            move_fence) = (State() for i in range(7))
 
         # skip right until we find the first cursor=0
         scan_fence.be(move=1, next=scan_cursor, name='right.scan.fence')
@@ -156,7 +158,7 @@ class MachineBuilder:
     def cursor_incr(self):
         (scan_fence, scan_cursor, scan_lend, scan_reg, shift_start_lend,
             shift_reg_1, shift_fence, shift_cursor, shift_lend,
-            shift_reg_0) = State() for range(10)
+            shift_reg_0) = (State() for i in range(10))
         # find the cursor
         scan_fence.be(move=1, next=scan_cursor, name='incr.scan.fence')
         scan_cursor.be(move=1, next1=scan_lend, next0=shift_start_lend, name='incr.scan.cursor')
@@ -180,7 +182,7 @@ class MachineBuilder:
             seek_reg_0, bail_lend, bail_cursor, seek_reg, seek_fence,
             seek_cursor, seek_lend, shift_rend_0, shift_rend_1, shift_reg_0,
             shift_reg_1, shift_cursor, shift_fence,
-            fixup_lend) = State() for range(19)
+            fixup_lend) = (State() for i in range(19))
         # find the cursor
         scan_fence.be(move=1, next=scan_cursor, name='decr.scan.fence')
         scan_cursor.be(move=1, next1=scan_lend, next0=seek_lend_0, write0='1', name='decr.scan.cursor')
@@ -215,7 +217,7 @@ class MachineBuilder:
     @memo
     def common_reset(self):
         (reset_fence, reset_rend, reset_reg, reset_cursor, reset2_fence,
-            reset2_rend, reset2_reg, reset2_cursor) = State() for range(8)
+            reset2_rend, reset2_reg, reset2_cursor) = (State() for i in range(8))
         # handles restoring the tape head and nextstateing for all except dec() success case
         # in all cases we are before the right fence
 
@@ -257,15 +259,15 @@ class MachineBuilder:
         if carry_bit:
             return State(write0 = '1', next0 = self.dispatch_order(order + 1, 0),
                 write1 = '0', next1 = self.dispatch_order(order + 1, 1),
-                move = -1, name = 'dispatch.' + order + '.carry')
+                move = -1, name = 'dispatch.{}.carry'.format(order))
         else:
             return State(next = self.dispatch_order(order + 1, 0), move = -1,
-                name = 'dispatch.' + order)
+                name = 'dispatch.{}'.format(order))
 
     @memo
     def noop(self, order):
-        reverse = State(move=-1, next=self.dispatch_order(order,1), name='noop.'+order)
-        return Subroutine(reverse, order, 'noop.'+order)
+        reverse = State(move=-1, next=self.dispatch_order(order,1), name='noop.{}'.format(order))
+        return Subroutine(reverse, order, reverse.name)
 
     @memo
     def halt(self):
@@ -273,7 +275,7 @@ class MachineBuilder:
 
     @memo
     def jump(self, rel_pc):
-        steps = [State() for range(len(rel_pc) + 1)]
+        steps = [State() for i in range(len(rel_pc) + 2)]
         steps[0].be(move=-1, next=steps[1], name='jump.{}.0'.format(rel_pc))
         steps[len(rel_pc)+1] = self.dispatch_order(len(rel_pc), 0)
         for i in range(len(rel_pc)):
@@ -302,9 +304,12 @@ class MachineBuilder:
             while offset % size:
                 noop_order = (offset & -offset).bit_length() - 1
                 offset += 1 << noop_order
-                real_parts.push(self.noop(noop_order))
+                real_parts.append(self.noop(noop_order))
 
-            real_parts.push(part)
+            real_parts.append(part)
+            offset += size
+
+        assert offset > 0
 
         order = 0
         while offset > (1 << order):
@@ -313,7 +318,7 @@ class MachineBuilder:
         while offset < (1 << order):
             noop_order = (offset & -offset).bit_length() - 1
             offset += 1 << noop_order
-            real_parts.push(self.noop(noop_order))
+            real_parts.append(self.noop(noop_order))
 
         offset = 0
         child_map = {}
@@ -323,8 +328,9 @@ class MachineBuilder:
                 assert part.name in label_offsets
                 part = self.jump('{:0{order}b}'.format(label_offsets[part.name], order = order))
             child_map['{:0{order}b}'.format(offset >> part.order, order = order - part.order)] = part
+            offset += 1 << part.order
 
-        return Subroutine(make_dispatcher(child_map, name), order, name)
+        return Subroutine(make_dispatcher(child_map, name, order), order, name)
 
     # Utilities...
     def regfile(self, *regs):
@@ -336,33 +342,29 @@ class MachineBuilder:
                 pad += 1
 
             inc = self.makesub(name = 'inc.' + name,
-                self.cursor_home(),
-                * index * (self.cursor_right(),),
-                * pad * (self.noop(0),),
-                self.cursor_incr())
-            )
+                *((self.cursor_home(),) + index * (self.cursor_right(),) +
+                pad * (self.noop(0),) + (self.cursor_incr(),)))
 
             dec = self.makesub(name = 'dec.' + name,
-                self.cursor_home(),
-                * index * (self.cursor_right(),),
-                * pad * (self.noop(0),),
-                self.cursor_decr())
-            )
+                *((self.cursor_home(),) + index * (self.cursor_right(),) +
+                pad * (self.noop(0),) + (self.cursor_decr(),)))
 
             setattr(self, name, Register(name, index, inc, dec))
 
-        @memo
-        def transfer(self, from, *to):
-            name = 'transfer(' + ','.join(from.name, *(x.name for x in to)) + ')'
-            return Subroutine(name=name,
-                label('again'),
-                from.dec,
-                goto('zero'),
-                *(tox.inc for tox in to),
-                goto('again'),
-                label('zero'),
-                self.noop(0), # TODO jumping to end of function NYI
-            )
+    @memo
+    def transfer(self, source, *to):
+        name = 'transfer(' + ','.join([source.name] + [x.name for x in to]) + ')'
+        return self.makesub(
+            label('again'),
+            source.dec,
+            goto('zero'),
+            *([tox.inc for tox in to] + [
+            goto('again'),
+            label('zero'),
+            self.noop(0), # TODO jumping to end of function NYI
+            ]),
+            name = name
+        )
 
 class Machine:
     def __init__(self, builder):
@@ -373,6 +375,8 @@ class Machine:
         if self.main.order != builder.pc_bits:
             print('pc_bits does not match calculated main order:', self.main.order, builder.pc_bits)
             assert False
+
+        self.builder.dispatchroot().clone(self.entry)
 
     def harness(self):
         self.print_machine()
@@ -390,9 +394,9 @@ class Machine:
             if isinstance(state, Halt) or state in seen_set:
                 continue
             seen_set.add(state)
-            seen.push(state)
-            queue.push(state.next1)
-            queue.push(state.next0)
+            seen.append(state)
+            queue.append(state.next1)
+            queue.append(state.next0)
         return seen
 
     def print_machine(self):
@@ -410,11 +414,8 @@ class Machine:
         self.longest_label = max(len(state.name) for state in self.reachable())
 
     def tm_print(self):
-        tape = []
-        tape.extend(reversed(self.left_tape))
-        tape.push('[' + self.current_tape + ']')
-        tape.extend(self.right_tape)
-        print('{-{len}state} {tape}'.format(len=self.longest_label, state=self.state.name, tape=' '.join(tape)))
+        tape = ' '.join(self.left_tape) + '[' + self.current_tape + ']' + ' '.join(reversed(self.right_tape))
+        print('{state:{len}} {tape}'.format(len=self.longest_label, state=self.state.name, tape=tape))
 
     def tm_step(self):
         self.tm_print()
@@ -429,10 +430,10 @@ class Machine:
         self.state = next
 
         if move == 1:
-            self.left_tape.push(self.current_tape)
+            self.left_tape.append(self.current_tape)
             self.current_tape = self.right_tape.pop() if self.right_tape else '0'
         elif move == -1:
-            self.right_tape.push(self.current_tape)
+            self.right_tape.append(self.current_tape)
             self.current_tape = self.left_tape.pop() if self.left_tape else '0'
         else:
             assert False
