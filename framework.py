@@ -13,6 +13,7 @@ and binary decision diagrams in place of subprograms."""
 # you, add an extra state to shift right at the beginning.
 
 from collections import namedtuple
+import argparse
 
 class Halt:
     """Special machine state which halts the Turing machine."""
@@ -88,12 +89,11 @@ class Subroutine:
     A subprogram consumes a power-of-two number of PC values, and can appear
     at any correctly aligned PC; the entry state is entered with the tape head
     on the first bit of the subprogram's owned portion of the PC."""
-    def __init__(self, entry, order, name, fakelevel=None, fakefunc=None):
+    def __init__(self, entry, order, name, child_map=None):
         self.entry = entry
         self.name = name
         self.order = order
-        self.fakelevel = fakelevel
-        self.fakefunc = fakefunc
+        self.child_map = child_map or {}
 
 def make_dispatcher(child_map, name, order, at_prefix=''):
     """Constructs one or more dispatch states to route to a child map.
@@ -407,7 +407,7 @@ class MachineBuilder:
             child_map[offset_bits] = part
             offset += 1 << part.order
 
-        return Subroutine(make_dispatcher(child_map, name, order), order, name)
+        return Subroutine(make_dispatcher(child_map, name, order), order, name, child_map=child_map)
 
     # Utilities...
     def regfile(self, *regs):
@@ -470,10 +470,78 @@ class Machine:
 
     def harness(self):
         """Processes command line arguments and runs the test harness for a machine."""
-        self.print_machine()
 
-        while isinstance(self.state, State):
-            self.tm_step()
+        parser = argparse.ArgumentParser(description=self.builder.__doc__)
+        parser.add_argument('--print-tm', action='store_true', \
+            help='Print the generated turing machine states')
+        parser.add_argument('--print-subs', action='store_true', \
+            help='Print the generated subprogram objects')
+        parser.add_argument('--run-tm', action='store_true', \
+            help='Run the turing machine')
+        parser.add_argument('--compress', action='store_true', \
+            help='Remove duplicate states')
+        args = parser.parse_args()
+
+        if args.compress:
+            self.compress()
+
+        if args.print_subs:
+            self.print_subs()
+
+        if args.print_tm:
+            self.print_machine()
+
+        if args.run_tm:
+            while isinstance(self.state, State):
+                self.tm_step()
+
+    def compress(self):
+        """Combine pairs of equivalent states in the turing machine."""
+        while True:
+            did_work = False
+            unique_map = {}
+            replacement_map = {}
+
+            for state in self.reachable():
+                tup = (state.next0, state.next1, state.write0, state.write1,
+                       state.move0, state.move1)
+                if tup in unique_map:
+                    replacement_map[state] = unique_map[tup]
+                else:
+                    unique_map[tup] = state
+
+            for state in self.reachable():
+                if state.next0 in replacement_map:
+                    did_work = True
+                    state.next0 = replacement_map[state.next0]
+                if state.next1 in replacement_map:
+                    did_work = True
+                    state.next1 = replacement_map[state.next1]
+
+            if self.entry in replacement_map:
+                did_work = True
+                self.entry = replacement_map[self.entry]
+
+            if not did_work:
+                break
+
+    def print_subs(self):
+        """Dump the subroutines used by this machine."""
+
+        stack = [self.main]
+        seen = set()
+        while stack:
+            subp = stack.pop()
+            if subp in seen:
+                continue
+            seen.add(subp)
+            print()
+            print('NAME:', subp.name, 'ORDER:', subp.order)
+            for offset, subr in sorted(subp.child_map.items()):
+                print('    {offset:{order}} -> {child}'.format(
+                    offset=offset, order=subp.order, child=subr.name
+                ))
+                stack.append(subr)
 
     def reachable(self):
         """Enumerates reachable states for the generated Turing machine."""
