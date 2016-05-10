@@ -1,7 +1,7 @@
 """Implements an EDSL for constructing Turing machines without subclassing
 MachineBuilder."""
 
-from framework import Machine, MachineBuilder, Goto, Label
+from framework import Machine, MachineBuilder, Goto, Label, memo
 
 class _Nexpr:
     """Base class for expressions which result in natural numbers.
@@ -144,6 +144,14 @@ class _Vwhile:
         state.emit_goto(again)
         state.emit_label(exit)
 
+class _Vcall:
+    def __init__(self, func, args):
+        self._func = func
+        self._args = args
+
+    def emit_stmt(self, state):
+        state.emit_call(self._func, [state.resolve(arg) for arg in self._args])
+
 class _BlockDef:
     def __init__(self):
         self._block = []
@@ -156,10 +164,14 @@ class _BlockDef:
     def set(self, lhs, rhs):
         self._block.append(_Vset(lhs, rhs))
 
+    def call(self, func, args):
+        self._block.append(_Vcall(func, args))
+
 class _SubDef(_BlockDef):
     """Stores a subprogram definition at a high level."""
-    def __init__(self, name):
+    def __init__(self, name, args):
         self._name = name
+        self._args = args
         _BlockDef.__init__(self)
 
 class _SubEmitter:
@@ -187,8 +199,13 @@ class _SubEmitter:
     def emit_dec(self, reg):
         self._output.append(reg.dec)
 
+    def emit_call(self, func_name, args):
+        func = self._machine_builder.instantiate(func_name, tuple(arg.name for arg in args))
+        self._output.append(func)
+
     def resolve(self, regname):
-        return self._register_map.get(regname) or self._machine_builder.register('_G' + regname)
+        reg = self._register_map.get(regname) or '_G' + regname
+        return self._machine_builder.register(reg) if isinstance(reg,str) else reg
 
     def put_temp(self, reg):
         self._scratch_free.append(reg)
@@ -210,12 +227,13 @@ class _AstMachine(MachineBuilder):
         self._fun_instances = {}
         self._gensym = 0
 
+    @memo
     def instantiate(self, name, args):
         defn = self._ast._defuns[name]
-        emit = _SubEmitter({}, self)
+        emit = _SubEmitter(dict(zip(defn._args, args)), self)
         for s in defn._block:
             s.emit_stmt(emit)
-        return self.makesub(name=name, *emit._output)
+        return self.makesub(name=name + '(' + ','.join(args) + ')', *emit._output)
 
     def main(self):
         return self.instantiate('main', ())
@@ -224,13 +242,13 @@ class DSL:
     def __init__(self):
         self._defuns = {}
 
-    def defun(self, name):
+    def defun(self, name, args):
         assert name not in self._defuns
-        self._defuns[name] = _SubDef(name)
+        self._defuns[name] = _SubDef(name, args)
         yield self._defuns[name]
 
     def main(self):
-        return self.defun('main')
+        return self.defun('main', ())
 
     def lit(self, value):
         return _Nlit(value)
