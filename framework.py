@@ -125,10 +125,13 @@ class MachineBuilder:
     # Quick=5: subroutines can cheat to the extent of storing non-integers
 
     def __init__(self):
+        self._nextreg = 0
         self._memos = {}
 
     # leaf procs which implement shifting and register machine operations
     # on entry to a leaf proc the tape head is just after the PC
+
+    # TODO: can probably remove 20+ states here by getting rid of the cursors
 
     @memo
     def cursor_left(self):
@@ -410,26 +413,30 @@ class MachineBuilder:
         return Subroutine(make_dispatcher(child_map, name, order), order, name, child_map=child_map)
 
     # Utilities...
+    @memo
+    def register(self, name):
+        """Assigns a name to a register, and creates the primitive inc/dec routines."""
+        index = self._nextreg
+        self._nextreg += 1
+        pad = 0
+        # the dec routine needs to be a power of two size, or else the
+        # invisible end padding will interfere with skip-next semantics
+        while (index + pad + 2) & (index + pad + 1):
+            pad += 1
+
+        inc = self.makesub(name='inc.' + name, \
+            *((self.cursor_home(),) + index * (self.cursor_right(),) + \
+            pad * (self.noop(0),) + (self.cursor_incr(),)))
+
+        dec = self.makesub(name='dec.' + name, \
+            *((self.cursor_home(),) + index * (self.cursor_right(),) + \
+            pad * (self.noop(0),) + (self.cursor_decr(),)))
+
+        return Register(name, index, inc, dec)
+
     def regfile(self, *regs):
         """Assigns names to one or more registers, and creates the primitive inc/dec routines."""
-        out = []
-        for index, name in enumerate(regs):
-            pad = 0
-            # the dec routine needs to be a power of two size, or else the
-            # invisible end padding will interfere with skip-next semantics
-            while (index + pad + 2) & (index + pad + 1):
-                pad += 1
-
-            inc = self.makesub(name='inc.' + name, \
-                *((self.cursor_home(),) + index * (self.cursor_right(),) + \
-                pad * (self.noop(0),) + (self.cursor_incr(),)))
-
-            dec = self.makesub(name='dec.' + name, \
-                *((self.cursor_home(),) + index * (self.cursor_right(),) + \
-                pad * (self.noop(0),) + (self.cursor_decr(),)))
-
-            out.append(Register(name, index, inc, dec))
-        return out
+        return [self.register(name) for name in regs]
 
     @memo
     def transfer(self, source, *to):
