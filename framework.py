@@ -486,11 +486,11 @@ class Machine:
                 help='Print the generated subprogram objects')
             parser.add_argument('--run-tm', action='store_true', \
                 help='Run the turing machine')
-            parser.add_argument('--compress', action='store_true', \
-                help='Remove duplicate states')
+            parser.add_argument('--dont-compress', action='store_true', \
+                help='Keep duplicate states')
             args = parser.parse_args()
 
-        if args.compress:
+        if not args.dont_compress:
             self.compress()
 
         if args.print_subs:

@@ -12,8 +12,8 @@ parser.add_argument('--print-subs', action='store_true', \
     help='Print the generated subprogram objects')
 parser.add_argument('--run-tm', action='store_true', \
     help='Run the turing machine')
-parser.add_argument('--compress', action='store_true', \
-    help='Remove duplicate states')
+parser.add_argument('--dont-compress', action='store_true', \
+    help='Keep indistinguishable states')
 args = parser.parse_args()
 
 ast, = nqlgrammar.grammar.parseFile(args.nql_file, parseAll=True)
