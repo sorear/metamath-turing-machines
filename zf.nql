@@ -1,14 +1,14 @@
-/* Cantor pair manipulation functions */
+/* Cantor pair manipulation proctions */
 /* t0 and t1 clobbered by pairing, also use t0 as blackhole a la MIPS */
-int t0;
-int t1;
+global t0;
+global t1;
 
-func pair(out, in1, in2) {
+proc pair(out, in1, in2) {
     t0 = in1 + in2;
     out = (t0 * (t0 + 1)) / 2 + in2;
 }
 
-func unpair(out1, out2, in) {
+proc unpair(out1, out2, in) {
     t0 = 0;
     while (2 * in >= t0 * (t0 + 1)) {
         t0 = t0 + 1;
@@ -19,45 +19,45 @@ func unpair(out1, out2, in) {
     out1 = t0 - t1;
 }
 
-func push(stack, var) { pair(stack, var, stack); }
-func pop(var, stack) { unpair(var, stack, stack); }
+proc push(stack, var) { pair(stack, var, stack); }
+proc pop(var, stack) { unpair(var, stack, stack); }
 
 /* Wff construction routines */
 /* wstack is a cons-list of wffs, proof nodes, or variable names */
 /* proof is the current node in the claimed proof */
 /* valid is set to zero when the verifier discovers an error */
-int wstack;
-int proof;
-int valid;
-int t2;
-int t3;
-int t4;
-int t5;
+global wstack;
+global proof;
+global valid;
+global t2;
+global t3;
+global t4;
+global t5;
 
 /* metavariable routines, push a value from the proof node */
-func gproof {
+proc gproof() {
     push(wstack, proof);
 }
-func car() {
+proc car() {
     pop(t2, wstack);
     unpair(t2, t0, t2);
     push(wstack, t2);
 }
-func cdr() {
+proc cdr() {
     pop(t2, wstack);
     unpair(t0, t2, t2);
     push(wstack, t2);
 }
-func cddr() { cdr(); cdr(); }
-func cadr() { cdr(); car(); }
+proc cddr() { cdr(); cdr(); }
+proc cadr() { cdr(); car(); }
 /* our axioms need 4 metavariables */
-func vA() { gproof(); cadr(); }
-func vB() { gproof(); cdr(); cadr(); }
-func vC() { gproof(); cddr(); cadr(); }
-func vD() { gproof(); cddr(); cdr(); cadr(); }
+proc vA() { gproof(); cadr(); }
+proc vB() { gproof(); cdr(); cadr(); }
+proc vC() { gproof(); cddr(); cadr(); }
+proc vD() { gproof(); cddr(); cdr(); cadr(); }
 
 /* check that two (set!) variables are distinct */
-func isne() {
+proc isne() {
     pop(t2, wstack);
     pop(t3, wstack);
     if (t2 == t3) {
@@ -66,7 +66,7 @@ func isne() {
 }
 
 /* equality check, use this after verify() to be sure of what was proved */
-func isne() {
+proc iseq() {
     pop(t2, wstack);
     pop(t3, wstack);
     if (t2 != t3) {
@@ -81,7 +81,7 @@ func isne() {
    (4, (|x|, |y|)) = x = y
    (5, (|x|, |y|)) = x e. y */
 
-func triple() {
+proc triple() {
     pop(t2, wstack); /* 2nd part */
     pop(t3, wstack); /* 1st part */
     pair(t2, t3, t2);
@@ -89,29 +89,29 @@ func triple() {
     push(wstack, t2);
 }
 
-func wal() {
+proc wal() {
     t4 = 3;
     triple();
 }
 
-func wn() {
+proc wn() {
     unpair(t4, t0, wstack);
     push(wstack, t4);
     t4 = 2;
     triple();
 }
 
-func wi() {
+proc wi() {
     t4 = 1;
     triple();
 }
 
-func weq() {
+proc weq() {
     t4 = 4;
     triple();
 }
 
-func wel() {
+proc wel() {
     t4 = 5;
     triple();
 }
@@ -119,7 +119,8 @@ func wel() {
 /* checks that set x does not appear in wff ph.
    used only by ax-17 and is not strictly needed, but saves a few axioms(?)
    IN (x ph) OUT () */
-func var_not_used() {
+global var_not_used_count;
+proc var_not_used() {
     pop(t3, wstack);
     pop(t2, wstack);
     unpair(t3, t4, t3);
@@ -132,20 +133,20 @@ func var_not_used() {
         push(wstack, t4);
         push(wstack, t2);
         push(wstack, t5);
-        var_not_used();
-        var_not_used();
-    } else if (t3 < 4) {
+        var_not_used_count = var_not_used_count + 2;
+    } elsif (t3 < 4) {
         push(wstack, t2);
         push(wstack, t4);
-        var_not_used();
+        var_not_used_count = var_not_used_count + 1;
     }
+    var_not_used_count = var_not_used_count - 1;
 }
 
 /* abbreviations */
-int t6;
-int t7;
+global t6;
+global t7;
 
-func wex() { /* E. x ph == -. A. x -. ph */
+proc wex() { /* E. x ph == -. A. x -. ph */
     pop(t6,wstack);
     wn();
     push(wstack,t6);
@@ -153,25 +154,26 @@ func wex() { /* E. x ph == -. A. x -. ph */
     wn();
 }
 
-func wa() { /* ( ph /\ ps ) == -. ( ph -> -. ps ) */
+proc wa() { /* ( ph /\ ps ) == -. ( ph -> -. ps ) */
     wn();
     wi();
     wn();
 }
 
-func wb() { /* ( ph <-> ps ) == ( ( ph -> ps ) /\ ( ps -> ph ) ) */
+proc wb() { /* ( ph <-> ps ) == ( ( ph -> ps ) /\ ( ps -> ph ) ) */
     unpair(t6, t7, wstack); /* t6=tos=ps */
     unpair(t7, t0, t7); /* t7=ntos=ph */
     wi();
     pair(wstack, t7, wstack);
     pair(wstack, t6, wstack);
     wi();
-    wan();
+    wa();
 }
 
 /* verifier */
 
-func verify() {
+global verify_count;
+proc verify() {
     /* wstack in: proof  stack out: wff that was proved, may set valid=0 */
     /* get the opcode/axiom number */
     pop(proof, wstack);
@@ -182,7 +184,7 @@ func verify() {
        http://us.metamath.org/mpegif/mmzfcnd.html
        I've omitted Regularity and Choice because they don't affect logical power. */
     /* re-added Regularity per metamath-list discussion, until someone gets me an axinf2nd */
-    /* mostly generated with https://github.com/sorear/smm/blob/master/misc/printparse.js */
+    /* mostly generated with https://github.com/sorear/smm/blob/master/misc/prglobalparse.js */
 
     if (t2 == 18) {
         /* axiom of modus ponens
@@ -193,106 +195,111 @@ func verify() {
            => ps
            */
         /* doing this in a weird order so that we don't reference "proof" after the recursive call */
+        vA(); vD(); /* verify(); iseq(); */ verify_count = verify_count + 1;
+        vA(); vB(); wi(); vC(); /* verify(); iseq(); */ verify_count = verify_count + 1;
         vB();
-        vA(); vB(); wi(); vC();
-        vA(); vD(); verify(); iseq();
-        verify(); iseq();
-    } else if (t2 == 1) {
+    } elsif (t2 == 1) {
         /* axiom of generalization
            A: ph  B: x  C: proof(ph) => A. x ph */
+        vA(); vC(); /* verify(); iseq(); */ verify_count = verify_count + 1;
         vA(); vB(); wal();
-        vA(); vC(); verify(); iseq();
 
         /* from here on are true axioms, which do not use verify() */
         /* set variables and wff variables are assigned to metavariables in that order */
-    } else if (t2 == 19) {
+    } elsif (t2 == 19) {
         /* ax-1: ( ph -> ( ps -> ph ) ) */
         vA(); vB(); vA(); wi(); wi();
-    } else if (t2 == 20) {
+    } elsif (t2 == 20) {
         /* ax-2: ( ( ph -> ( ps -> ch ) ) -> ( ( ph -> ps ) -> ( ph -> ch ) ) ) */
         vA(); vB(); vC(); wi(); wi(); vA(); vB(); wi(); vA(); vC(); wi(); wi(); wi();
-    } else if (t2 == 21) {
+    } elsif (t2 == 21) {
         /* ax-3: ( ( -. ph -> -. ps ) -> ( ps -> ph ) ) */
         vA(); wn(); vB(); wn(); wi(); vB(); vA(); wi(); wi();
-    } else if (t2 == 2) {
+    } elsif (t2 == 2) {
         /* ax-5: (A. x (ph -> ps) -> (A. x ph -> A. x ps)) */
         vA(); vB(); wi(); vC(); wal(); vA(); vC(); wal(); vB(); vC(); wal(); wi(); wi();
-    } else if (t2 == 3) {
+    } elsif (t2 == 3) {
         /* ax-6: (-. A. x ph -> A. x  -. A. x ph) */
         vA(); vB(); wal(); wn(); vA(); vB(); wal(); wn(); vB(); wal(); wi();
-    } else if (t2 == 4) {
+    } elsif (t2 == 4) {
         /* ax-7: (A. x A. y ph -> A. y A. x ph) */
         vA(); vB(); wal(); vC(); wal(); vA(); vC(); wal(); vB(); wal(); wi();
-    } else if (t2 == 5) {
+    } elsif (t2 == 5) {
         /* ax-8: (x  = y  -> (x  = z -> y  = z)) */
         vA(); vB(); weq(); vA(); vC(); weq(); vB(); vC(); weq(); wi(); wi();
-    } else if (t2 == 6) {
+    } elsif (t2 == 6) {
         /* ax-9: -. A. x  -. x  = y  */
         vA(); vB(); weq(); wn(); vA(); wal(); wn();
-    } else if (t2 == 7) {
+    } elsif (t2 == 7) {
         /* ax-11: (x  = y  -> (A. y ph -> A. x (x  = y  -> ph))) */
         vA(); vB(); weq(); vC(); vB(); wal(); vA(); vB(); weq(); vC(); wi(); vA(); wal(); wi(); wi();
-    } else if (t2 == 8) {
+    } elsif (t2 == 8) {
         /* ax-12: (-. x  = y  -> (y  = z -> A. x  y  = z)) */
         vA(); vB(); weq(); wn(); vB(); vC(); weq(); vB(); vC(); weq(); vA(); wal(); wi(); wi();
-    } else if (t2 == 9) {
+    } elsif (t2 == 9) {
         /* ax-13: (x  = y  -> (x  e. z -> y  e. z)) */
         vA(); vB(); weq(); vA(); vC(); wel(); vB(); vC(); wel(); wi(); wi();
-    } else if (t2 == 10) {
+    } elsif (t2 == 10) {
         /* ax-14: (x  = y  -> (z e. x  -> z e. y )) */
         vA(); vB(); weq(); vC(); vA(); wel(); vC(); vB(); wel(); wi(); wi();
-    } else if (t2 == 11) {
+    } elsif (t2 == 11) {
         /* ax-17: (ph -> A. x ph) */
-        vB(); vA(); var_not_used();
+        vB(); vA();
+        var_not_used_count = 1;
+        while (var_not_used_count > 0) { var_not_used(); }
         vA(); vA(); vB(); wal(); wi();
-    } else if (t2 == 12) {
+    } elsif (t2 == 12) {
         /* axextnd: E. x ((x  e. y  <-> x  e. z) -> y  = z) */
         vA(); vB(); wel(); vA(); vC(); wel(); wb(); vB(); vC(); weq(); wi(); vA(); wex();
-    } else if (t2 == 13) {
+    } elsif (t2 == 13) {
         /* axrepnd: E. x (E. y A. z(ph -> z = y ) -> A. z(A. y  z e. x  <-> E. x (A. z x  e. y  /\ A. y ph))) */
         vA(); vB(); vC(); weq(); wi(); vB(); wal(); vC(); wex(); vB(); vD(); wel(); vC(); wal();
         vD(); vC(); wel(); vB(); wal(); vA(); vC(); wal(); wa(); vD(); wex(); wb(); vB(); wal(); wi(); vD(); wex();
-    } else if (t2 == 14) {
+    } elsif (t2 == 14) {
         /* axpownd: (-. x  = y  -> E. x A. y (A. x (E. z x  e. y  -> A. y  x  e. z) -> y  e. x )) */
         vA(); vB(); weq(); wn(); vA(); vB(); wel(); vC(); wex(); vA(); vC(); wel();
         vB(); wal(); wi(); vA(); wal(); vB(); vA(); wel(); wi(); vB(); wal(); vA(); wex(); wi();
-    } else if (t2 == 15) {
+    } elsif (t2 == 15) {
         /* axunnd: E. x A. y (E. x (y  e. x  /\ x  e. z) -> y  e. x ) */
         vA(); vB(); wel(); vB(); vC(); wel(); wa(); vB(); wex(); vA(); vB(); wel(); wi(); vA(); wal(); vB(); wex();
-    } else if (t2 == 22) {
+    } elsif (t2 == 22) {
         /* axregnd: ( x e. y -> E. x ( x e. y /\ A. z ( z e. x -> -. z e. y ) ) ) */
         vA(); vB(); wel(); vA(); vB(); wel(); vC(); vA(); wel(); vC(); vB(); wel(); wn(); wi(); vC(); wal(); wa(); vA(); wex(); wi();
-    } else if (t2 == 16) {
+    } elsif (t2 == 16) {
         /* axinfnd: E. x (y  e. z -> (y  e. x  /\ A. y (y  e. x  -> E. z(y  e. z /\ z e. x )))) */
         vA(); vB(); wel(); vA(); vC(); wel(); vA(); vC(); wel(); vA(); vB(); wel(); vB(); vC(); wel();
         wa(); vB(); wex(); wi(); vA(); wal(); wa(); wi(); vC(); wex();
-    } else if (t2 == 17) {
+    } elsif (t2 == 17) {
         /* dtru: -. A. x  x  = y  */
         vA(); vB(); isne();
         vA(); vB(); weq(); vA(); wal(); wn();
     } else {
         valid = 0;
     }
-    pop(proof, pstack);
-}
-
-int nextproof;
-valid = 0;
-
-while (valid == 0) {
-    valid = 1;
-    wstack = 0;
-    t2 = 1;
-    push(wstack, t2);
-    push(wstack, t2);
-    weq();
-    wn();
-    /* we just pushed -. v0 = v0 , which should not be provable */
-    push(wstack, nextproof);
-    verify();
     iseq();
-    nextproof = nextproof + 1;
-    /* if we're valid here, we found a contradiction in ZF */
 }
 
-halt;
+global nextproof;
+
+proc main() {
+    valid = 0;
+
+    while (valid == 0) {
+        valid = 1;
+        wstack = 0;
+        t2 = 1;
+        push(wstack, t2);
+        push(wstack, t2);
+        weq();
+        wn();
+        /* we just pushed -. v0 = v0 , which should not be provable */
+        push(wstack, nextproof);
+        verify_count = 1;
+        while (verify_count > 0) {
+            verify_count = verify_count - 1;
+            verify();
+        }
+        nextproof = nextproof + 1;
+        /* if we're valid here, we found a contradiction in ZF */
+    }
+}
