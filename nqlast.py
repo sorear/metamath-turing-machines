@@ -291,6 +291,24 @@ class Not(BoolExpr):
     def emit_test(self, state, label, invert):
         self.children[0].emit_test(state, label, not invert)
 
+class And(BoolExpr):
+    child_types = (BoolExpr,BoolExpr)
+    is_or = False
+
+    def emit_test(self, state, label, invert):
+        left, right = self.children
+        if invert ^ self.is_or:
+            left.emit_test(state, label, True ^ self.is_or)
+            right.emit_test(state, label, True ^ self.is_or)
+        else:
+            dont_jump = state.gensym()
+            left.emit_test(state, dont_jump, True ^ self.is_or)
+            right.emit_test(state, label, False ^ self.is_or)
+            state.emit_label(dont_jump)
+
+class Or(And):
+    is_or = True
+
 class VoidExpr(Node):
     """Base class for expressions which return no value."""
 

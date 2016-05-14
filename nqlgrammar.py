@@ -22,6 +22,9 @@ def _grammar():
     ge_ = pp.Literal('>=')
     eq_ = pp.Literal('==')
     ne_ = pp.Literal('!=')
+    not_ = pp.Literal('!') + ~pp.Literal('=')
+    and_ = pp.Literal('&&')
+    or_ = pp.Literal('||')
     times_ = pp.Literal('*')
     div_ = pp.Literal('/')
     monus_ = pp.Literal('-')
@@ -48,12 +51,15 @@ def _grammar():
     pri_paren = (lpar_ + expr + rpar_)
     pri_expr = pri_int | pri_reg | pri_paren
 
+    def callop(op, line, *children):
+        if isinstance(op, type):
+            return op(lineno=line, children=list(children))
+        else:
+            return op(line, *children)
+
     def binop_level(prev, assoc, name, op_list):
         def dobinop(line,lhs,op,rhs):
-            if isinstance(op, type):
-                return op(lineno=line, children=[lhs, rhs])
-            else:
-                return op()
+            return callop(op, line, lhs, rhs)
         def associate(s,l,t):
             t = list(t)
             line = pp.lineno(l, s)
@@ -71,6 +77,14 @@ def _grammar():
             return t[0]
         return (prev + pp.ZeroOrMore(op_list + prev)).setParseAction(associate).setName(name)
 
+    def prefix_level(prev, name, op_list):
+        def associate(s, l, t):
+            t = list(t)
+            while len(t) > 1:
+                t[-3:-1] = [callop(t[-2], pp.lineno(l, s), t[-1])]
+            return t[0]
+        return (pp.ZeroOrMore(op_list) + prev).setParseAction(associate).setName(name)
+
     mul_multiply = times_().setParseAction(lambda t: nql.Mul)
     mul_div = div_().setParseAction(lambda t: nql.Div)
     mul_expr = binop_level(pri_expr, 'left', 'multiplicative expression', mul_multiply ^ mul_div)
@@ -87,7 +101,16 @@ def _grammar():
     rel_notequal = ne_().setParseAction(lambda t: nql.NotEqual)
     rel_expr = binop_level(add_expr, 'none', 'relational expression', rel_less ^ rel_greater ^ rel_lessequal ^ rel_greaterequal ^ rel_equal ^ rel_notequal)
 
-    expr << rel_expr
+    and_and = and_().setParseAction(lambda t: nql.And)
+    and_expr = binop_level(rel_expr, 'left', 'and', and_and)
+
+    or_or = or_().setParseAction(lambda t: nql.Or)
+    or_expr = binop_level(and_expr, 'left', 'or', or_or)
+
+    not_not = not_().setParseAction(lambda t: nql.Not)
+    not_expr = prefix_level(or_expr, 'not expression', not_not)
+
+    expr << not_expr
 
     # statement grammar
 
