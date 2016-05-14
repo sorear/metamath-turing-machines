@@ -1,0 +1,81 @@
+proc zero(x) {
+    x = 0;
+}
+
+proc one(x) {
+    x = 1;
+}
+
+proc incr(x) {
+    x = x + 1;
+}
+
+/* Computes x modulo y */
+proc modulus(x, y, out) {
+    out = x;
+
+    while (out >= y) {
+        out = out - y;
+    }
+}
+
+proc assignXtoYminusX(x, y) {
+    x = y - x;
+}
+
+/* Figures out if x is prime, and puts the output in y */
+/* Does not modify x, modifies y */
+proc isPrime(x, h, y) {
+    if (x == 1) {
+        zero(y);
+        return;
+    }
+
+    y = 2;
+
+    while (x > y) {
+        modulus(x, y, h);
+
+        if (h == 0) {
+            zero(y);
+            return;
+        }
+        incr(y);
+    }
+}
+
+global evenNumber;
+global primeCounter;
+global isThisOnePrime;
+global foundSum;
+global h;
+
+proc main() {
+    evenNumber = 2;
+    one(foundSum);
+
+    while (0 < foundSum) {
+        zero(foundSum);
+        evenNumber = evenNumber + 2;
+        one(primeCounter);
+
+        while (primeCounter < evenNumber) {
+            isPrime(primeCounter, h, isThisOnePrime);
+
+            if (0 < isThisOnePrime) {
+                assignXtoYminusX(primeCounter, evenNumber);
+                isPrime(primeCounter, h, isThisOnePrime);
+                assignXtoYminusX(primeCounter, evenNumber);
+
+                if (0 < isThisOnePrime) {
+                    /* print evenNumber;
+                    print primeCounter; */
+
+                    one(foundSum);
+                }
+            }
+
+            incr(primeCounter);
+        }
+    }
+}
