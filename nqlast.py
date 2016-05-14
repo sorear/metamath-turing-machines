@@ -28,6 +28,41 @@ class Node:
         """Print an error using the line number of this node."""
         raise str(self.lineno) + ": " + message
 
+    repr_suppress = ('lineno','children')
+
+    def __repr__(self):
+        result = []
+        result.append(self.__class__.__name__ + '(')
+        result.append(('\n  ',''))
+
+        has_items = False
+        for k, v in vars(self).items():
+            if k in self.repr_suppress:
+                continue
+            result.append(k + '=' + repr(v).replace('\n', '\n  '))
+            result.append((',\n  ', ', '))
+            has_items = True
+
+        if self.children:
+            result.append('children=[')
+            result.append(('\n    ', ''))
+            for child in self.children:
+                result.append(repr(child).replace('\n', '\n    '))
+                result.append((',\n    ', ', '))
+            result.pop()
+            result.append(']')
+        elif has_items:
+            result.pop()
+        result.append(')')
+
+        result = [(tup if isinstance(tup, tuple) else (tup, tup)) for tup in result]
+        broken = ''.join(a for a, b in result)
+        unbroken = ''.join(b for a, b in result)
+        if len(unbroken) < 80 and '\n' not in unbroken:
+            return unbroken
+        else:
+            return broken
+
 class NatExpr(Node):
     """Base class for expressions which result in a natural number.
 
@@ -258,6 +293,7 @@ class GlobalReg(GlobalNode):
 
 class Program(Node):
     child_types = GlobalNode
+    repr_suppress = Node.repr_suppress + ('by_name',)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.by_name = {node.name: node for node in self.children}
