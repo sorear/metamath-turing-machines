@@ -1,0 +1,19 @@
+/* Let's check whether or not all squares are less than 5 */
+
+proc square(x, y) {
+	y = x * x;
+}
+
+proc incr(x) {
+	x = x + 1;
+}
+
+global a;
+global b;
+
+proc main() {
+    while (b < 5) {
+        square(a, b);
+        incr(a);
+    }
+}
