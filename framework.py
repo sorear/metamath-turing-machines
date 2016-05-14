@@ -65,6 +65,8 @@ class State:
 def make_bits(num, bits):
     """Constructs a bit string of length=bits for an integer num."""
     assert num < (1 << bits)
+    if bits == 0:
+        return ''
     return '{num:0{bits}b}'.format(num=num, bits=bits)
 
 def memo(func):
