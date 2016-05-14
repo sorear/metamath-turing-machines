@@ -35,7 +35,7 @@ def _grammar():
             return action(pp.lineno(l,s), t)
         return wrapper
 
-    pri_int = integer_().setParseAction(a(lambda l,t: nql.Lit(lineno=l, value=t[0])))
+    pri_int = integer_().setParseAction(a(lambda l,t: nql.Lit(lineno=l, value=int(t[0]))))
     pri_reg = identifier_().setParseAction(a(lambda l,t: nql.Reg(lineno=l, name=t[0])))
     pri_paren = (lpar_ + expr + rpar_)
     pri_expr = pri_int | pri_reg | pri_paren
@@ -94,6 +94,7 @@ def _grammar():
     decl = procdef | globaldef
 
     program = pp.ZeroOrMore(decl).setParseAction(a(lambda l,t: nql.Program(lineno=l, children=list(t))))
+    program.ignore(pp.cStyleComment)
     return program
 
 grammar = _grammar()
