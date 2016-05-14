@@ -475,19 +475,20 @@ class Machine:
         self.right_tape = []
         self.longest_label = max(len(state.name) for state in self.reachable())
 
-    def harness(self):
+    def harness(self, args=None):
         """Processes command line arguments and runs the test harness for a machine."""
 
-        parser = argparse.ArgumentParser(description=self.builder.__doc__)
-        parser.add_argument('--print-tm', action='store_true', \
-            help='Print the generated turing machine states')
-        parser.add_argument('--print-subs', action='store_true', \
-            help='Print the generated subprogram objects')
-        parser.add_argument('--run-tm', action='store_true', \
-            help='Run the turing machine')
-        parser.add_argument('--compress', action='store_true', \
-            help='Remove duplicate states')
-        args = parser.parse_args()
+        if not args:
+            parser = argparse.ArgumentParser(description=self.builder.__doc__)
+            parser.add_argument('--print-tm', action='store_true', \
+                help='Print the generated turing machine states')
+            parser.add_argument('--print-subs', action='store_true', \
+                help='Print the generated subprogram objects')
+            parser.add_argument('--run-tm', action='store_true', \
+                help='Run the turing machine')
+            parser.add_argument('--compress', action='store_true', \
+                help='Remove duplicate states')
+            args = parser.parse_args()
 
         if args.compress:
             self.compress()

@@ -368,10 +368,10 @@ class AstMachine(MachineBuilder):
     def main(self):
         return self.instantiate('main', ())
 
-def harness(ast):
+def harness(ast, args=None):
     mach1 = AstMachine(ast)
     mach1.pc_bits = 50
     order = mach1.main().order
     mach2 = AstMachine(ast)
     mach2.pc_bits = order
-    Machine(mach2).harness()
+    Machine(mach2).harness(args)
