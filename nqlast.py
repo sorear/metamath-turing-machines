@@ -194,8 +194,11 @@ class BoolExpr(Node):
         To customize argument evaluation, override emit_test instead."""
         raise NotImplementedError()
 
-class Less(BoolExpr):
+class CompareBase(BoolExpr):
     child_types = (NatExpr, NatExpr)
+    jump_lt = False
+    jump_eq = False
+    jump_gt = False
 
     def emit_test_op(self, state, label, invert, temps):
         lhs, rhs = temps
@@ -203,6 +206,8 @@ class Less(BoolExpr):
         monus = state.gensym()
         not_less = state.gensym()
         is_less = state.gensym()
+        no_jump = state.gensym()
+
         state.emit_label(monus)
         state.emit_dec(rhs)
         state.emit_goto(not_less)
@@ -210,18 +215,39 @@ class Less(BoolExpr):
         state.emit_goto(is_less)
         state.emit_goto(monus)
 
-        if invert:
-            state.emit_label(not_less)
-            state.emit_transfer(lhs)
-            state.emit_goto(label)
-            state.emit_label(is_less)
-            state.emit_transfer(rhs)
-        else:
-            state.emit_label(is_less)
-            state.emit_transfer(rhs)
-            state.emit_goto(label)
-            state.emit_label(not_less)
-            state.emit_transfer(lhs)
+        state.emit_label(not_less)
+        if self.jump_eq != self.jump_gt:
+            state.emit_dec(lhs)
+            state.emit_goto(label if self.jump_eq ^ invert else no_jump)
+        state.emit_transfer(lhs)
+        state.emit_goto(label if self.jump_gt ^ invert else no_jump)
+
+        state.emit_label(is_less)
+        state.emit_transfer(rhs)
+        state.emit_goto(label if self.jump_lt ^ invert else no_jump)
+
+        state.emit_label(no_jump)
+
+class Less(CompareBase):
+    jump_lt = True
+
+class LessEqual(CompareBase):
+    jump_lt = True
+    jump_eq = True
+
+class Greater(CompareBase):
+    jump_gt = True
+
+class GreaterEqual(CompareBase):
+    jump_eq = True
+    jump_gt = True
+
+class Equal(CompareBase):
+    jump_eq = True
+
+class NotEqual(CompareBase):
+    jump_lt = True
+    jump_gt = True
 
 class Not(BoolExpr):
     child_types = (BoolExpr,)
@@ -266,6 +292,19 @@ class WhileLoop(VoidExpr):
         state.emit_goto(again)
         state.emit_label(exit)
 
+class IfThen(VoidExpr):
+    child_types = (BoolExpr, VoidExpr, VoidExpr)
+    def emit_stmt(self, state):
+        test, then_, else_ = self.children
+        l_else = state.gensym()
+        l_then = state.gensym()
+        test.emit_test(state, l_else, True)
+        then_.emit_stmt(state)
+        state.emit_goto(l_then)
+        state.emit_label(l_else)
+        else_.emit_stmt(state)
+        state.emit_label(l_then)
+
 class Call(VoidExpr):
     child_types = Reg
     def __init__(self, **kwargs):
@@ -274,6 +313,10 @@ class Call(VoidExpr):
 
     def emit_stmt(self, state):
         state.emit_call(self.func, [state.resolve(arg.name) for arg in self.children])
+
+class Return(VoidExpr):
+    def emit_stmt(self, state):
+        state.emit_return()
 
 class GlobalNode(Node):
     pass
@@ -308,6 +351,7 @@ class SubEmitter:
         self._scratch_used = []
         self._scratch_free = []
         self._output = []
+        self._return_label = None
 
     def emit_transfer(self, *regs):
         self._output.append(self._machine_builder.transfer(*regs))
@@ -315,11 +359,23 @@ class SubEmitter:
     def emit_halt(self):
         self._output.append(self._machine_builder.halt())
 
+    def emit_noop(self):
+        self._output.append(self._machine_builder.noop(0))
+
     def emit_label(self, label):
         self._output.append(Label(label))
 
     def emit_goto(self, label):
         self._output.append(Goto(label))
+
+    def emit_return(self):
+        if not self._return_label:
+            self._return_label = self.gensym()
+        self.emit_goto(self._return_label)
+
+    def close_return(self):
+        if self._return_label:
+            self.emit_label(self._return_label)
 
     def emit_inc(self, reg):
         self._output.append(reg.inc)
@@ -366,6 +422,7 @@ class AstMachine(MachineBuilder):
         assert isinstance(defn, ProcDef)
         emit = SubEmitter(dict(zip(defn.parameters, args)), self)
         defn.children[0].emit_stmt(emit)
+        emit.close_return()
         if name == 'main':
             emit.emit_halt()
         return self.makesub(name=name + '(' + ','.join(args) + ')', *emit._output)
