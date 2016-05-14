@@ -6,12 +6,14 @@ def _grammar():
     # "tokens"
 
     integer_ = pp.Word(pp.nums).setName('integer').setParseAction(lambda t: int(t[0]))
-    reserved_words = {'while', 'proc', 'global', 'if', 'return'}
+    reserved_words = {'while', 'proc', 'global', 'if', 'return', 'else', 'elsif'}
     identifier_ = pp.Word(pp.alphas, pp.alphanums + '_') \
         .addCondition((lambda t: t[0] not in reserved_words), \
             message='reserved word').setName('identifier')
 
     if_ = pp.Keyword('if')
+    else_ = pp.Keyword('else')
+    elsif_ = pp.Keyword('elsif')
     while_ = pp.Keyword('while')
     proc_ = pp.Keyword('proc')
     global_ = pp.Keyword('global')
@@ -117,7 +119,15 @@ def _grammar():
     block = pp.Forward()
 
     st_whileloop = (while_ - lpar_ - expr - rpar_ - block).setParseAction(a(lambda l,t: nql.WhileLoop(lineno=l, children=[t[1],t[2]])))
-    st_if = (if_ - lpar_ - expr - rpar_ - block).setParseAction(a(lambda l,t: nql.IfThen(lineno=l, children=[t[1], t[2], nql.Block()])))
+
+    else_chain = pp.Forward()
+    else_none = pp.Empty().setParseAction(lambda t: nql.Block())
+    else_else = (else_ - block).setParseAction(lambda t: t[1])
+    else_elsif = (elsif_ - lpar_ - expr - rpar_ - block - else_chain).setParseAction(a(lambda l,t: nql.IfThen(lineno=l, children=[t[1],t[2],t[3]])))
+    else_chain << (else_else ^ else_elsif ^ else_none)
+
+    st_if = (if_ - lpar_ - expr - rpar_ - block - else_chain).setParseAction(a(lambda l,t: nql.IfThen(lineno=l, children=[t[1], t[2], t[3]])))
+
     st_assignment = (identifier_ + equal_ + expr + semi_).setParseAction(a(lambda l,t: nql.Assign(lineno=l, children=[nql.Reg(lineno=l, name=t[0]), t[2]])))
     arglist = (lpar_ + pp.Optional(pp.delimitedList(identifier_)) + rpar_).setParseAction(lambda t: [list(t)])
     st_proccall = (identifier_ + arglist + semi_).setParseAction(a(lambda l,t: nql.Call(lineno=l, func=t[0], children=[nql.Reg(lineno=l, name=arg) for arg in t[1]])))
