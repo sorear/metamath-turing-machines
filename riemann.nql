@@ -1,0 +1,222 @@
+/* Computes x += 1 */
+proc incr(x) {
+    x = x + 1;
+    return;
+}
+
+proc zero(x) {
+    x = 0;
+    return;
+}
+
+proc one(x) {
+    x = 1;
+    return;
+}
+
+/* Computes x modulo y */
+proc modulus(x, y, out) {
+    out = x;
+
+    while (out >= y) {
+        out = out - y;
+    }
+
+    return;
+}
+
+/* Figures out if x is prime, and puts the output in out */
+/* Does not modify x, modifies y */
+proc isPrime(x, hold, out) {
+    if (x == 1) {
+        zero(out);
+        return;
+    }
+
+    out = 2;
+
+    while (x > out) {
+        modulus(x, out, hold);
+
+        if (hold == 0) {
+            zero(out);
+            return;
+        }
+        incr(out);
+    }
+
+    return;
+}
+
+/* eta(j) = p if there exists k,p s.t. j = p^k, p is prime */
+/* eta(j) = 1 otherwise */
+
+proc eta(j, h1, h2, out) {
+    one(out);
+    while (j > out) {
+        incr(out);
+
+        isPrime(out, h1, h2);
+
+        /* is the number we're trying indeed prime? */
+        if (h2 != 0) {
+            one(h2);
+            while (j > h2) {
+                h2 = h2 * out;
+                if (h2 == j) {
+                    return;
+                }
+            }
+        }
+    }
+
+    one(out);
+    return;
+}
+
+/* delta(x) = \product_{n<x} \product_{j<=n} eta(j) */
+
+proc delta(x, nCount, jCount, h1, h2, etaOut, out) {
+    one(out);
+    one(nCount);
+
+    while (nCount < x) {
+        one(jCount);
+
+        while (jCount <= nCount) {
+            eta(jCount, h1, h2, etaOut);
+            out = out * etaOut;
+
+            incr(jCount);
+        }
+
+        incr(nCount);
+    }
+
+    return;
+}
+
+/* out = x^2 */
+proc square(x, out) {
+    out = x * x;
+    return;
+}
+
+/* c *= (a*b) */
+proc multiplyByBoth(a, b, c) {
+    c = c * b;
+    c = c * a;
+    return;
+}
+
+/* out1 = x1^2
+   out2 = x2^2 */
+
+proc squareBoth(x1, x2, out1, out2) {
+    square(x1, out1);
+    square(x2, out2);
+    return;
+}
+
+proc squareBothAndMultiply(x1, x2, h, out) {
+    squareBoth(x1, x2, h, out);
+    out = out * h;
+    return;
+}
+
+
+/* out = x! */
+proc factorial(x, xCountdown, out) {
+    xCountdown = x;
+    one(out);
+
+    while (xCountdown > 0) {
+        out = out * xCountdown;
+        xCountdown = xCountdown - 1;
+    }
+
+    return;
+}
+
+/* see final.pdf for an explanation of the breakdown of this procedure */
+
+proc a(deltaXFac, k, h, out) {
+
+    zero(out);
+
+    /* the sum will be taken over out */
+
+    one(k);
+
+    while (k <= deltaXFac) {
+        h = deltaXFac / k;
+        out = out + h;
+        incr(k);
+    }
+
+    return;
+}
+
+/* see final.pdf for an explanation of the breakdown of this procedure */
+
+proc b(deltaXFac, x, out) {
+    square(x, out);
+    out = out / 2;
+    out = out * deltaXFac;
+    return;
+}
+
+/* see final.pdf for an explanation of the breakdown of this procedure */
+
+proc l(aOfX, bOfX, h, out) {
+    squareBoth(aOfX, bOfX, h, out);
+    out = out + h;
+    return;
+}
+
+/* see final.pdf for an explanation of the breakdown of this procedure */
+/* WARNING! this modifies deltaXFac! Do not reuse deltaXFac after calling this proction!! */
+
+proc r(x, deltaXFac, aOfX, bOfX, h1, h2, out) {
+
+    /* first term (36 n^3 (delta(n)!)^2) */
+    h1 = 3;
+    squareBothAndMultiply(deltaXFac, h1, h2, out);
+    h1 = 2;
+    squareBothAndMultiply(h1, x, deltaXFac, h2);
+    multiplyByBoth(x, h2, out);
+
+    /* second term (2 a(n) b(n)) */
+    multiplyByBoth(aOfX, bOfX, h1);
+
+    out = out + h1;
+
+    return;
+}
+
+global x;
+global deltaXFac;
+global aOfX;
+global bOfX;
+global lOfX;
+global rOfX;
+global h1;
+global h2;
+
+proc main() {
+    one(rOfX);
+
+    while (lOfX < rOfX) {
+        incr(x);
+        /* print x; */
+
+        delta(x, aOfX, bOfX, lOfX, rOfX, h1, h2);
+        factorial(h2, aOfX, deltaXFac);
+
+        a(deltaXFac, bOfX, h2, aOfX);
+        b(deltaXFac, h2, bOfX);
+
+        r(x, deltaXFac, aOfX, bOfX, h2, lOfX, rOfX);
+        l(aOfX, bOfX, h2, lOfX);
+    }
+}
