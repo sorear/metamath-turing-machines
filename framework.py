@@ -75,7 +75,11 @@ def memo(func):
     def _wrapper(self, *args):
         key = (func,) + args
         if key not in self._memos:
+            self._memos[key] = None
             self._memos[key] = func(self, *args)
+        if not self._memos[key]:
+            print("recursion detected", func.__name__, repr(args))
+            assert False
         return self._memos[key]
 
     return _wrapper
