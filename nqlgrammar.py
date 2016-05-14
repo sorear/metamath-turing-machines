@@ -23,6 +23,7 @@ def _grammar():
     eq_ = pp.Literal('==')
     ne_ = pp.Literal('!=')
     times_ = pp.Literal('*')
+    div_ = pp.Literal('/')
     monus_ = pp.Literal('-')
     equal_ = pp.Literal('=') + ~pp.Literal('=')
     plus_ = pp.Literal('+')
@@ -71,7 +72,8 @@ def _grammar():
         return (prev + pp.ZeroOrMore(op_list + prev)).setParseAction(associate).setName(name)
 
     mul_multiply = times_().setParseAction(lambda t: nql.Mul)
-    mul_expr = binop_level(pri_expr, 'left', 'multiplicative expression', mul_multiply)
+    mul_div = div_().setParseAction(lambda t: nql.Div)
+    mul_expr = binop_level(pri_expr, 'left', 'multiplicative expression', mul_multiply ^ mul_div)
 
     add_add = plus_().setParseAction(lambda t: nql.Add)
     add_monus = monus_().setParseAction(lambda t: nql.Monus)

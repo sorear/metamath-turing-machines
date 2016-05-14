@@ -131,6 +131,42 @@ class Mul(NatExpr):
         state.emit_transfer(rhs)
         state.put_temp(save)
 
+class Div(NatExpr):
+    child_types = (NatExpr, NatExpr)
+    def is_additive(self):
+        return True
+
+    def emit_nat(self, state, out):
+        dividend_ex, divisor_ex = self.children
+
+        dividend = state.get_temp()
+        divisor = state.get_temp()
+
+        loop_quotient = state.gensym()
+        loop_divisor = state.gensym()
+        exhausted = state.gensym()
+        full_divisor = state.gensym()
+
+        dividend_ex.emit_nat(state, dividend)
+
+        state.emit_label(loop_quotient)
+        divisor_ex.emit_nat(state, divisor)
+        state.emit_label(loop_divisor)
+        state.emit_dec(divisor)
+        state.emit_goto(full_divisor)
+        state.emit_dec(dividend)
+        state.emit_goto(exhausted)
+        state.emit_goto(loop_divisor)
+        state.emit_label(full_divisor)
+
+        state.emit_inc(out)
+        state.emit_goto(loop_quotient)
+        state.emit_label(exhausted)
+        state.emit_transfer(divisor)
+
+        state.put_temp(dividend)
+        state.put_temp(divisor)
+
 class Add(NatExpr):
     child_types = NatExpr
     def is_additive(self):
