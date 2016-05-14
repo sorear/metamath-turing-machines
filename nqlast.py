@@ -312,6 +312,9 @@ class SubEmitter:
     def emit_transfer(self, *regs):
         self._output.append(self._machine_builder.transfer(*regs))
 
+    def emit_halt(self):
+        self._output.append(self._machine_builder.halt())
+
     def emit_label(self, label):
         self._output.append(Label(label))
 
@@ -363,6 +366,8 @@ class AstMachine(MachineBuilder):
         assert isinstance(defn, ProcDef)
         emit = SubEmitter(dict(zip(defn.parameters, args)), self)
         defn.children[0].emit_stmt(emit)
+        if name == 'main':
+            emit.emit_halt()
         return self.makesub(name=name + '(' + ','.join(args) + ')', *emit._output)
 
     def main(self):
