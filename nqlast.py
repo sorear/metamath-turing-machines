@@ -410,6 +410,64 @@ class IfThen(VoidExpr):
         else_.emit_stmt(state)
         state.emit_label(l_then)
 
+class SwitchArm(Block):
+    def __init__(self, **kwargs):
+        self.case = kwargs.pop('case')
+        assert self.case is None or isinstance(self.case, int) and self.case >= 0
+        super().__init__(**kwargs)
+
+class Break(VoidExpr):
+    def emit_stmt(self, state):
+        assert state.break_label
+        state.emit_goto(state.break_label)
+
+class Switch(VoidExpr):
+    def check_children(self):
+        head, *arms = self.children
+        assert isinstance(head, NatExpr)
+        for arm in arms:
+            assert isinstance(arm, SwitchArm)
+
+    def emit_stmt(self, state):
+        head_ex, *arms_ex = self.children
+
+        head = state.get_temp()
+        head_ex.emit_nat(state, head)
+
+        arm_labels = {}
+        for arm in arms_ex:
+            if arm.case is None or arm.case in arm_labels:
+                continue
+            arm_labels[arm.case] = state.gensym()
+
+        default_label = state.gensym()
+
+        for count in range(max(arm_labels)):
+            state.emit_dec(head)
+            state.emit_goto(arm_labels.get(count, default_label))
+
+        state.emit_transfer(head)
+        state.emit_goto(default_label)
+        state.put_temp(head)
+
+        save_break_label, state.break_label = state.break_label, state.gensym()
+
+        for arm in arms_ex:
+            if arm.case is None:
+                assert default_label
+                state.emit_label(default_label)
+                arm.emit_stmt(state)
+                default_label = None
+            else:
+                assert arm.case in arm_labels
+                state.emit_label(arm_labels.pop(arm.case))
+                arm.emit_stmt(state)
+
+        if default_label:
+            state.emit_label(default_label)
+        state.emit_label(state.break_label)
+        state.break_label = save_break_label
+
 class Call(VoidExpr):
     child_types = Reg
     def __init__(self, **kwargs):
@@ -457,6 +515,7 @@ class SubEmitter:
         self._scratch_free = []
         self._output = []
         self._return_label = None
+        self.break_label = None
 
     def emit_transfer(self, *regs):
         self._output.append(self._machine_builder.transfer(*regs))

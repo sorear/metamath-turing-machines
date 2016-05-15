@@ -6,7 +6,8 @@ def _grammar():
     # "tokens"
 
     integer_ = pp.Word(pp.nums).setName('integer').setParseAction(lambda t: int(t[0]))
-    reserved_words = {'while', 'proc', 'global', 'if', 'return', 'else', 'elsif'}
+    reserved_words = {'while', 'proc', 'global', 'if', 'return', 'else', 'elsif', 'switch',
+                      'case', 'break', 'default'}
     identifier_ = pp.Word(pp.alphas, pp.alphanums + '_') \
         .addCondition((lambda t: t[0] not in reserved_words), \
             message='reserved word').setName('identifier')
@@ -18,6 +19,10 @@ def _grammar():
     proc_ = pp.Keyword('proc')
     global_ = pp.Keyword('global')
     return_ = pp.Keyword('return')
+    switch_ = pp.Keyword('switch')
+    case_ = pp.Keyword('case')
+    default_ = pp.Keyword('default')
+    break_ = pp.Keyword('break')
     lt_ = pp.Literal('<') + ~pp.Literal('=')
     gt_ = pp.Literal('>') + ~pp.Literal('=')
     le_ = pp.Literal('<=')
@@ -33,6 +38,7 @@ def _grammar():
     equal_ = pp.Literal('=') + ~pp.Literal('=')
     plus_ = pp.Literal('+')
     semi_ = pp.Literal(';')
+    colon_ = pp.Suppress(':')
     lpar_ = pp.Suppress('(')
     rpar_ = pp.Suppress(')')
     lbra_ = pp.Suppress('{')
@@ -116,7 +122,8 @@ def _grammar():
 
     # statement grammar
 
-    block = pp.Forward()
+    stmt = pp.Forward()
+    block = (lbra_ + pp.ZeroOrMore(stmt) + rbra_).setParseAction(a(lambda l,t: nql.Block(lineno=l, children=list(t))))
 
     st_whileloop = (while_ - lpar_ - expr - rpar_ - block).setParseAction(a(lambda l,t: nql.WhileLoop(lineno=l, children=[t[1],t[2]])))
 
@@ -132,9 +139,15 @@ def _grammar():
     arglist = (lpar_ + pp.Optional(pp.delimitedList(identifier_)) + rpar_).setParseAction(lambda t: [list(t)])
     st_proccall = (identifier_ + arglist + semi_).setParseAction(a(lambda l,t: nql.Call(lineno=l, func=t[0], children=[nql.Reg(lineno=l, name=arg) for arg in t[1]])))
     st_return = (return_ + semi_).setParseAction(a(lambda l,t: nql.Return(lineno=l)))
-    stmt = st_whileloop | st_if | st_assignment | st_return | st_proccall | block
+    st_break = (break_ + semi_).setParseAction(a(lambda l,t: nql.Break(lineno=l)))
 
-    block << (lbra_ + pp.ZeroOrMore(stmt) + rbra_).setParseAction(a(lambda l,t: nql.Block(lineno=l, children=list(t))))
+    case_arm = (case_ - integer_ - colon_ - pp.ZeroOrMore(stmt)).setParseAction(a(lambda l,t: nql.SwitchArm(lineno=l, case=t[1], children=list(t)[2:])))
+    def_arm = (default_ - colon_ - pp.ZeroOrMore(stmt)).setParseAction(a(lambda l,t: nql.SwitchArm(lineno=l, case=None, children=list(t)[1:])))
+
+    st_switch = (switch_ - lpar_ - expr - rpar_ - lbra_ - pp.ZeroOrMore(case_arm | def_arm) - rbra_) \
+        .setParseAction(a(lambda l,t: nql.Switch(lineno=l, children=list(t)[1:])))
+
+    stmt << (st_whileloop | st_if | st_switch | st_assignment | st_return | st_break | st_proccall | block)
 
     # top level
 

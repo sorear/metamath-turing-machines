@@ -186,7 +186,8 @@ proc verify() {
     /* re-added Regularity per metamath-list discussion, until someone gets me an axinf2nd */
     /* mostly generated with https://github.com/sorear/smm/blob/master/misc/prglobalparse.js */
 
-    if (t2 == 18) {
+    switch (t2) {
+    case 1:
         /* axiom of modus ponens
            A: ph
            B: ps
@@ -198,7 +199,8 @@ proc verify() {
         vA(); vD(); /* verify(); iseq(); */ verify_count = verify_count + 1;
         vA(); vB(); wi(); vC(); /* verify(); iseq(); */ verify_count = verify_count + 1;
         vB();
-    } elsif (t2 == 1) {
+        break;
+    case 2:
         /* axiom of generalization
            A: ph  B: x  C: proof(ph) => A. x ph */
         vA(); vC(); /* verify(); iseq(); */ verify_count = verify_count + 1;
@@ -206,75 +208,97 @@ proc verify() {
 
         /* from here on are true axioms, which do not use verify() */
         /* set variables and wff variables are assigned to metavariables in that order */
-    } elsif (t2 == 19) {
+        break;
+    case 3:
         /* ax-1: ( ph -> ( ps -> ph ) ) */
         vA(); vB(); vA(); wi(); wi();
-    } elsif (t2 == 20) {
+        break;
+    case 4:
         /* ax-2: ( ( ph -> ( ps -> ch ) ) -> ( ( ph -> ps ) -> ( ph -> ch ) ) ) */
         vA(); vB(); vC(); wi(); wi(); vA(); vB(); wi(); vA(); vC(); wi(); wi(); wi();
-    } elsif (t2 == 21) {
+        break;
+    case 5:
         /* ax-3: ( ( -. ph -> -. ps ) -> ( ps -> ph ) ) */
         vA(); wn(); vB(); wn(); wi(); vB(); vA(); wi(); wi();
-    } elsif (t2 == 2) {
+        break;
+    case 6:
         /* ax-5: (A. x (ph -> ps) -> (A. x ph -> A. x ps)) */
         vA(); vB(); wi(); vC(); wal(); vA(); vC(); wal(); vB(); vC(); wal(); wi(); wi();
-    } elsif (t2 == 3) {
+        break;
+    case 7:
         /* ax-6: (-. A. x ph -> A. x  -. A. x ph) */
         vA(); vB(); wal(); wn(); vA(); vB(); wal(); wn(); vB(); wal(); wi();
-    } elsif (t2 == 4) {
+        break;
+    case 8:
         /* ax-7: (A. x A. y ph -> A. y A. x ph) */
         vA(); vB(); wal(); vC(); wal(); vA(); vC(); wal(); vB(); wal(); wi();
-    } elsif (t2 == 5) {
+        break;
+    case 9:
         /* ax-8: (x  = y  -> (x  = z -> y  = z)) */
         vA(); vB(); weq(); vA(); vC(); weq(); vB(); vC(); weq(); wi(); wi();
-    } elsif (t2 == 6) {
+        break;
+    case 10:
         /* ax-9: -. A. x  -. x  = y  */
         vA(); vB(); weq(); wn(); vA(); wal(); wn();
-    } elsif (t2 == 7) {
+        break;
+    case 11:
         /* ax-11: (x  = y  -> (A. y ph -> A. x (x  = y  -> ph))) */
         vA(); vB(); weq(); vC(); vB(); wal(); vA(); vB(); weq(); vC(); wi(); vA(); wal(); wi(); wi();
-    } elsif (t2 == 8) {
+        break;
+    case 12:
         /* ax-12: (-. x  = y  -> (y  = z -> A. x  y  = z)) */
         vA(); vB(); weq(); wn(); vB(); vC(); weq(); vB(); vC(); weq(); vA(); wal(); wi(); wi();
-    } elsif (t2 == 9) {
+        break;
+    case 13:
         /* ax-13: (x  = y  -> (x  e. z -> y  e. z)) */
         vA(); vB(); weq(); vA(); vC(); wel(); vB(); vC(); wel(); wi(); wi();
-    } elsif (t2 == 10) {
+        break;
+    case 14:
         /* ax-14: (x  = y  -> (z e. x  -> z e. y )) */
         vA(); vB(); weq(); vC(); vA(); wel(); vC(); vB(); wel(); wi(); wi();
-    } elsif (t2 == 11) {
+        break;
+    case 15:
         /* ax-17: (ph -> A. x ph) */
         vB(); vA();
         var_not_used_count = 1;
         while (var_not_used_count > 0) { var_not_used(); }
         vA(); vA(); vB(); wal(); wi();
-    } elsif (t2 == 12) {
+        break;
+    case 16:
         /* axextnd: E. x ((x  e. y  <-> x  e. z) -> y  = z) */
         vA(); vB(); wel(); vA(); vC(); wel(); wb(); vB(); vC(); weq(); wi(); vA(); wex();
-    } elsif (t2 == 13) {
+        break;
+    case 17:
         /* axrepnd: E. x (E. y A. z(ph -> z = y ) -> A. z(A. y  z e. x  <-> E. x (A. z x  e. y  /\ A. y ph))) */
         vA(); vB(); vC(); weq(); wi(); vB(); wal(); vC(); wex(); vB(); vD(); wel(); vC(); wal();
         vD(); vC(); wel(); vB(); wal(); vA(); vC(); wal(); wa(); vD(); wex(); wb(); vB(); wal(); wi(); vD(); wex();
-    } elsif (t2 == 14) {
+        break;
+    case 18:
         /* axpownd: (-. x  = y  -> E. x A. y (A. x (E. z x  e. y  -> A. y  x  e. z) -> y  e. x )) */
         vA(); vB(); weq(); wn(); vA(); vB(); wel(); vC(); wex(); vA(); vC(); wel();
         vB(); wal(); wi(); vA(); wal(); vB(); vA(); wel(); wi(); vB(); wal(); vA(); wex(); wi();
-    } elsif (t2 == 15) {
+        break;
+    case 19:
         /* axunnd: E. x A. y (E. x (y  e. x  /\ x  e. z) -> y  e. x ) */
         vA(); vB(); wel(); vB(); vC(); wel(); wa(); vB(); wex(); vA(); vB(); wel(); wi(); vA(); wal(); vB(); wex();
-    } elsif (t2 == 22) {
+        break;
+    case 20:
         /* axregnd: ( x e. y -> E. x ( x e. y /\ A. z ( z e. x -> -. z e. y ) ) ) */
         vA(); vB(); wel(); vA(); vB(); wel(); vC(); vA(); wel(); vC(); vB(); wel(); wn(); wi(); vC(); wal(); wa(); vA(); wex(); wi();
-    } elsif (t2 == 16) {
+        break;
+    case 21:
         /* axinfnd: E. x (y  e. z -> (y  e. x  /\ A. y (y  e. x  -> E. z(y  e. z /\ z e. x )))) */
         vA(); vB(); wel(); vA(); vC(); wel(); vA(); vC(); wel(); vA(); vB(); wel(); vB(); vC(); wel();
         wa(); vB(); wex(); wi(); vA(); wal(); wa(); wi(); vC(); wex();
-    } elsif (t2 == 17) {
+        break;
+    case 22:
         /* dtru: -. A. x  x  = y  */
         vA(); vB(); isne();
         vA(); vB(); weq(); vA(); wal(); wn();
-    } else {
+        break;
+    default:
         valid = 0;
+        break;
     }
     iseq();
 }
