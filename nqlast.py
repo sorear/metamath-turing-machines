@@ -377,11 +377,31 @@ class Assign(VoidExpr):
     # TODO: augmented additions and subtractions can be peepholed to remove the temporary
     # TODO: when assigning something that doesn't use the old value, it can be constructed in place
 
+    def emit_aug_op(self, state, lhs, rhs):
+        if not (isinstance(rhs, Add) or isinstance(rhs, Monus)):
+            return
+        if len(rhs.children) != 2:
+            return
+        rhs_l, rhs_r = rhs.children
+        if not (isinstance(rhs_l, Reg) and rhs_l.name == lhs.name):
+            return
+        if not isinstance(rhs_r, Lit):
+            return
+        for _ in range(rhs_r.value):
+            if isinstance(rhs, Monus):
+                state.emit_dec(state.resolve(lhs.name))
+                state.emit_noop()
+            else:
+                state.emit_inc(state.resolve(lhs.name))
+        return True
+
     def emit_stmt(self, state):
         lhs, rhs = self.children
         if isinstance(rhs, Lit):
             state.emit_transfer(state.resolve(lhs.name))
             rhs.emit_nat(state, state.resolve(lhs.name))
+        elif self.emit_aug_op(state, lhs, rhs):
+            pass
         else:
             temp = state.get_temp()
             rhs.emit_nat(state, temp)

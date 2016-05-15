@@ -592,8 +592,9 @@ class Machine:
             print()
             print('NAME:', subp.name, 'ORDER:', subp.order)
             for offset, entry in sorted(subp.child_map.items()):
-                display = '    {offset:{order}} -> {child}'.format(offset=offset, \
-                    order=subp.order, child=entry.sub.name)
+                while len(offset) < subp.order:
+                    offset = offset + ' '
+                display = '    {offset} -> {child}'.format(offset=offset, child=entry.sub.name)
                 if entry.goto:
                     display += ' -> ' + entry.goto
                 for label in entry.labels or ():
