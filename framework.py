@@ -257,18 +257,20 @@ class MachineBuilder:
         return Subroutine(Halt(), 0, 'halt')
 
     @memo
-    def jump(self, rel_pc):
+    def jump(self, order, rel_pc):
         """A subprogram which replaces a suffix of the PC, for relative jumps.
 
         Used automatically by the Goto operator."""
-        steps = [State() for i in range(len(rel_pc) + 2)]
-        steps[0].be(move=-1, next=steps[1], name='jump.{}.0'.format(rel_pc))
-        steps[len(rel_pc)+1] = self.dispatch_order(len(rel_pc), 0)
-        for i in range(len(rel_pc)):
-            steps[i+1].be(move=-1, next=steps[i+2], write=rel_pc[-i-1],
+        assert rel_pc < (1 << (order + 1))
+        steps = [State() for i in range(order + 2)]
+        steps[0].be(move=-1, next=steps[1], name='jump.{}.{}'.format(rel_pc, 0))
+        steps[order+1] = self.dispatch_order(order, rel_pc >> order)
+        for i in range(order):
+            bit = str((rel_pc >> i) & 1)
+            steps[i+1].be(move=-1, next=steps[i+2], write=bit,
                           name='jump.{}.{}'.format(rel_pc, i+1))
 
-        return Subroutine(steps[0], 0, 'jump.{}'.format(rel_pc))
+        return Subroutine(steps[0], 0, 'jump.{}.{}'.format(rel_pc, order))
 
     # TODO: subprogram compilation needs to be substantially lazier in order to do
     # effective inlining and register allocation
@@ -321,7 +323,7 @@ class MachineBuilder:
         for part in real_parts:
             if isinstance(part, Goto):
                 assert part.name in label_offsets
-                part = self.jump(make_bits(label_offsets[part.name], order))
+                part = self.jump(order, label_offsets[part.name])
             offset_bits = make_bits(offset >> part.order, order - part.order)
             child_map[offset_bits] = part
             offset += 1 << part.order
@@ -358,7 +360,6 @@ class MachineBuilder:
             *([tox.inc for tox in to] + [
                 Goto('again'),
                 Label('zero'),
-                self.noop(0), # TODO jumping to end of function NYI
             ]),
             name=name
         )
