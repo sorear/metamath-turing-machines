@@ -347,20 +347,21 @@ class MachineBuilder:
         return Subroutine(Halt(), 0, 'halt')
 
     @memo
-    def jump(self, order, rel_pc):
+    def jump(self, order, rel_pc, sub_name):
         """A subprogram which replaces a suffix of the PC, for relative jumps.
 
         Used automatically by the Goto operator."""
         assert rel_pc < (1 << (order + 1))
         steps = [State() for i in range(order + 2)]
         steps[order+1] = self.dispatch_order(order, rel_pc >> order)
-        steps[0].be(move=-1, next=steps[1], name='jump.{}.{}/{}'.format(rel_pc, order, 0))
+        steps[0].be(move=-1, next=steps[1], \
+            name='{}.jump({},{},{})'.format(sub_name, rel_pc, order, 0))
         for i in range(order):
             bit = str((rel_pc >> i) & 1)
-            steps[i+1].be(move=-1, next=steps[i+2], write=bit,
-                          name='jump.{}.{}/{}'.format(rel_pc, order, i+1))
+            steps[i+1].be(move=-1, next=steps[i+2], write=bit, \
+                name='{}.jump({},{},{})'.format(sub_name, rel_pc, order, i+1))
 
-        return Subroutine(steps[0], 0, 'jump.{}.{}/{}'.format(rel_pc, order, order))
+        return Subroutine(steps[0], 0, '{}.jump({},{})'.format(sub_name, rel_pc, order))
 
     @memo
     def rjump(self, rel_pc):
@@ -462,7 +463,7 @@ class MachineBuilder:
                         base = (offset >> jump_order) << jump_order
                         rel = target - base
                         if (jump_order, rel) in jumps_required:
-                            part = self.jump(jump_order, rel)
+                            part = self.jump(jump_order, rel, name)
                             # don't break, we want to take the largest reqd jump
                             # except for very short jumps, those have low enough
                             # entropy to be worthwhile
