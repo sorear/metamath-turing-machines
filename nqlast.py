@@ -245,8 +245,43 @@ class CompareBase(BoolExpr):
     jump_eq = False
     jump_gt = False
 
-    def emit_test_op(self, state, label, invert, temps):
-        lhs, rhs = temps
+    def emit_compare_lit(self, state, label, invert, lhs_ex, rhs_val, swap):
+        jump_lt, jump_eq, jump_gt = self.jump_lt, self.jump_eq, self.jump_gt
+        if swap:
+            jump_lt, jump_gt = jump_gt, jump_lt
+
+        lhs = state.get_temp()
+        lhs_ex.emit_nat(state, lhs)
+
+        no_jump = state.gensym()
+        for _ in range(rhs_val):
+            state.emit_dec(lhs)
+            state.emit_goto(label if jump_lt ^ invert else no_jump)
+
+        if jump_eq != jump_gt:
+            state.emit_dec(lhs)
+            state.emit_goto(label if jump_eq ^ invert else no_jump)
+
+        state.emit_transfer(lhs)
+        if jump_gt ^ invert:
+            state.emit_goto(label)
+        state.emit_label(no_jump)
+        state.put_temp(lhs)
+
+    def emit_test(self, state, label, invert):
+        lhs_ex, rhs_ex = self.children
+
+        if isinstance(rhs_ex, Lit):
+            return self.emit_compare_lit(state, label, invert, lhs_ex, rhs_ex.value, False)
+        if isinstance(lhs_ex, Lit):
+            return self.emit_compare_lit(state, label, invert, rhs_ex, lhs_ex.value, True)
+
+        lhs = state.get_temp()
+        lhs_ex.emit_nat(state, lhs)
+        rhs = state.get_temp()
+        rhs_ex.emit_nat(state, rhs)
+
+        jump_lt, jump_eq, jump_gt = self.jump_lt, self.jump_eq, self.jump_gt
 
         monus = state.gensym()
         not_less = state.gensym()
@@ -261,17 +296,20 @@ class CompareBase(BoolExpr):
         state.emit_goto(monus)
 
         state.emit_label(not_less)
-        if self.jump_eq != self.jump_gt:
+        if jump_eq != jump_gt:
             state.emit_dec(lhs)
-            state.emit_goto(label if self.jump_eq ^ invert else no_jump)
+            state.emit_goto(label if jump_eq ^ invert else no_jump)
         state.emit_transfer(lhs)
-        state.emit_goto(label if self.jump_gt ^ invert else no_jump)
+        state.emit_goto(label if jump_gt ^ invert else no_jump)
 
         state.emit_label(is_less)
         state.emit_transfer(rhs)
-        state.emit_goto(label if self.jump_lt ^ invert else no_jump)
+        state.emit_goto(label if jump_lt ^ invert else no_jump)
 
         state.emit_label(no_jump)
+
+        state.put_temp(lhs)
+        state.put_temp(rhs)
 
 class Less(CompareBase):
     jump_lt = True
