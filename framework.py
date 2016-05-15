@@ -28,6 +28,7 @@ class State:
     the be() method; the latter allows for cyclic graphs to be defined."""
     def __init__(self, **kwargs):
         self.set = False
+        self.name = '**UNINITIALIZED**'
         if kwargs:
             self.be(**kwargs)
 
@@ -86,7 +87,9 @@ def memo(func):
     return _wrapper
 
 Label = namedtuple('Label', ['name'])
+Label.size = 0
 Goto = namedtuple('Goto', ['name'])
+Goto.size = 1
 Register = namedtuple('Register', 'name index inc dec')
 
 class Subroutine:
@@ -100,6 +103,7 @@ class Subroutine:
         self.entry = entry
         self.name = name
         self.order = order
+        self.size = 1 << order
         self.child_map = child_map or {}
 
 def make_dispatcher(child_map, name, order, at_prefix=''):
@@ -131,9 +135,10 @@ class MachineBuilder:
     # Quick=4: as Quick=3 except subroutines can cheat
     # Quick=5: subroutines can cheat to the extent of storing non-integers
 
-    def __init__(self):
+    def __init__(self, control_args):
         self._nextreg = 0
         self._memos = {}
+        self.control_args = control_args
 
     # leaf procs which implement register machine operations
     # on entry to a leaf proc the tape head is just after the PC
@@ -263,14 +268,14 @@ class MachineBuilder:
         Used automatically by the Goto operator."""
         assert rel_pc < (1 << (order + 1))
         steps = [State() for i in range(order + 2)]
-        steps[0].be(move=-1, next=steps[1], name='jump.{}.{}'.format(rel_pc, 0))
         steps[order+1] = self.dispatch_order(order, rel_pc >> order)
+        steps[0].be(move=-1, next=steps[1], name='jump.{}.{}/{}'.format(rel_pc, order, 0))
         for i in range(order):
             bit = str((rel_pc >> i) & 1)
             steps[i+1].be(move=-1, next=steps[i+2], write=bit,
-                          name='jump.{}.{}'.format(rel_pc, i+1))
+                          name='jump.{}.{}/{}'.format(rel_pc, order, i+1))
 
-        return Subroutine(steps[0], 0, 'jump.{}.{}'.format(rel_pc, order))
+        return Subroutine(steps[0], 0, 'jump.{}.{}/{}'.format(rel_pc, order, order))
 
     # TODO: subprogram compilation needs to be substantially lazier in order to do
     # effective inlining and register allocation
@@ -295,16 +300,14 @@ class MachineBuilder:
                 label_offsets[part.name] = offset
                 continue
 
-            size = 1 if isinstance(part, Goto) else 1 << part.order
-
             # parts must be aligned
-            while offset % size:
+            while offset % part.size:
                 noop_order = (offset & -offset).bit_length() - 1
                 offset += 1 << noop_order
                 real_parts.append(self.noop(noop_order))
 
             real_parts.append(part)
-            offset += size
+            offset += part.size
 
         assert offset > 0
 
@@ -320,10 +323,38 @@ class MachineBuilder:
         offset = 0
         child_map = {}
 
+        jumps_required = set()
+
+        for part in real_parts:
+            if isinstance(part, Goto):
+                jump_order = 0
+                target = label_offsets[part.name]
+                while True:
+                    base = (offset >> jump_order) << jump_order
+                    rel = target - base
+                    if rel >= 0 and rel < (1 << (jump_order + 1)):
+                        jumps_required.add((jump_order, rel))
+                        break
+                    jump_order += 1
+            offset += part.size
+        offset = 0
+
         for part in real_parts:
             if isinstance(part, Goto):
                 assert part.name in label_offsets
-                part = self.jump(order, label_offsets[part.name])
+                target = label_offsets[part.name]
+                part = None
+                for jump_order in range(order + 1):
+                    base = (offset >> jump_order) << jump_order
+                    rel = target - base
+                    if (jump_order, rel) in jumps_required:
+                        part = self.jump(jump_order, rel)
+                        # don't break, we want to take the largest reqd jump
+                        # except for very short jumps, those have low enough
+                        # entropy to be worthwhile
+                        if jump_order < 3:
+                            break
+                assert part
             offset_bits = make_bits(offset >> part.order, order - part.order)
             child_map[offset_bits] = part
             offset += 1 << part.order
@@ -364,6 +395,8 @@ class MachineBuilder:
             name=name
         )
 
+
+
 class Machine:
     """Manipulates and debugs the generated Turing machine for a MachineBuilder."""
     def __init__(self, builder):
@@ -383,20 +416,8 @@ class Machine:
         self.right_tape = []
         self.longest_label = max(len(state.name) for state in self.reachable())
 
-    def harness(self, args=None):
+    def harness(self, args):
         """Processes command line arguments and runs the test harness for a machine."""
-
-        if not args:
-            parser = argparse.ArgumentParser(description=self.builder.__doc__)
-            parser.add_argument('--print-tm', action='store_true', \
-                help='Print the generated turing machine states')
-            parser.add_argument('--print-subs', action='store_true', \
-                help='Print the generated subprogram objects')
-            parser.add_argument('--run-tm', action='store_true', \
-                help='Run the turing machine')
-            parser.add_argument('--dont-compress', action='store_true', \
-                help='Keep duplicate states')
-            args = parser.parse_args()
 
         if not args.dont_compress:
             self.compress()
@@ -467,6 +488,8 @@ class Machine:
         while queue:
             state = queue.pop()
             if isinstance(state, Halt) or state in seen_set:
+                continue
+            if not state.set:
                 continue
             seen_set.add(state)
             seen.append(state)

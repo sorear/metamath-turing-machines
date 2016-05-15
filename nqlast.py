@@ -574,8 +574,8 @@ class SubEmitter:
         return 'gen' + str(self._machine_builder._gensym)
 
 class AstMachine(MachineBuilder):
-    def __init__(self, ast):
-        super().__init__()
+    def __init__(self, ast, control_args):
+        super().__init__(control_args)
         self._ast = ast
         self._fun_instances = {}
         self._gensym = 0
@@ -594,10 +594,10 @@ class AstMachine(MachineBuilder):
     def main(self):
         return self.instantiate('main', ())
 
-def harness(ast, args=None):
-    mach1 = AstMachine(ast)
+def harness(ast, args):
+    mach1 = AstMachine(ast, args)
     mach1.pc_bits = 50
     order = mach1.main().order
-    mach2 = AstMachine(ast)
+    mach2 = AstMachine(ast, args)
     mach2.pc_bits = order
     Machine(mach2).harness(args)
