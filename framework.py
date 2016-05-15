@@ -362,6 +362,23 @@ class MachineBuilder:
 
         return Subroutine(steps[0], 0, 'jump.{}.{}/{}'.format(rel_pc, order, order))
 
+    @memo
+    def rjump(self, rel_pc):
+        """A subprogram which adds a constant to the PC, for relative jumps."""
+        steps = [(State(), State()) for i in range(self.pc_bits + 1)]
+        steps.append(2 * (self.dispatch_order(self.pc_bits, 0),))
+        steps[0][0].be(move=-1, next=steps[1][0], name='rjump({})({})'.format(rel_pc, 0))
+        for i in range(self.pc_bits):
+            bit = (rel_pc >> i) & 1
+            steps[i+1][0].be(move=-1, next0=steps[i+2][0], write0=str(bit), \
+                next1=steps[i+2][bit], write1=str(1-bit), \
+                name='rjump({})({})'.format(rel_pc, i+1))
+            steps[i+1][1].be(move=-1, next0=steps[i+2][bit], write0=str(1-bit), \
+                next1=steps[i+2][1], write1=str(bit), \
+                name='rjump({})({}+)'.format(rel_pc, i+1))
+
+        return Subroutine(steps[0][0], 0, 'rjump({})'.format(rel_pc))
+
     # TODO: subprogram compilation needs to be substantially lazier in order to do
     # effective inlining and register allocation
     def makesub(self, *parts, name):
@@ -437,18 +454,21 @@ class MachineBuilder:
             if isinstance(part, Goto):
                 assert part.name in label_offsets
                 target = label_offsets[part.name]
-                part = None
-                for jump_order in range(order + 1):
-                    base = (offset >> jump_order) << jump_order
-                    rel = target - base
-                    if (jump_order, rel) in jumps_required:
-                        part = self.jump(jump_order, rel)
-                        # don't break, we want to take the largest reqd jump
-                        # except for very short jumps, those have low enough
-                        # entropy to be worthwhile
-                        if jump_order < 3:
-                            break
-                assert part
+                if self.control_args.relative_jumps:
+                    part = self.rjump(target - offset)
+                else:
+                    part = None
+                    for jump_order in range(order + 1):
+                        base = (offset >> jump_order) << jump_order
+                        rel = target - base
+                        if (jump_order, rel) in jumps_required:
+                            part = self.jump(jump_order, rel)
+                            # don't break, we want to take the largest reqd jump
+                            # except for very short jumps, those have low enough
+                            # entropy to be worthwhile
+                            if jump_order < 3:
+                                break
+                    assert part
             offset_bits = make_bits(offset >> part.order, order - part.order)
             goto_line = goto_map.get(offset)
             label_line = label_map.get(offset)
