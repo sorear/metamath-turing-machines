@@ -245,10 +245,19 @@ class CompareBase(BoolExpr):
     jump_eq = False
     jump_gt = False
 
-    def emit_compare_lit(self, state, label, invert, lhs_ex, rhs_val, swap):
-        jump_lt, jump_eq, jump_gt = self.jump_lt, self.jump_eq, self.jump_gt
-        if swap:
-            jump_lt, jump_gt = jump_gt, jump_lt
+    def emit_compare_reg_0(self, state, label, j_eq, j_gt, name):
+        # LT is not possible here
+
+        no_jump = state.gensym()
+        state.emit_dec(state.resolve(name))
+        state.emit_goto(label if j_eq else no_jump)
+        state.emit_inc(state.resolve(name))
+        state.emit_goto(label if j_gt else no_jump)
+        state.emit_label(no_jump)
+
+    def emit_compare_lit(self, state, label, j_lt, j_eq, j_gt, lhs_ex, rhs_val):
+        if isinstance(lhs_ex, Reg) and rhs_val == 0:
+            return self.emit_compare_reg_0(state, label, j_eq, j_gt, lhs_ex.name)
 
         lhs = state.get_temp()
         lhs_ex.emit_nat(state, lhs)
@@ -256,14 +265,14 @@ class CompareBase(BoolExpr):
         no_jump = state.gensym()
         for _ in range(rhs_val):
             state.emit_dec(lhs)
-            state.emit_goto(label if jump_lt ^ invert else no_jump)
+            state.emit_goto(label if j_lt else no_jump)
 
-        if jump_eq != jump_gt:
+        if j_eq != j_gt:
             state.emit_dec(lhs)
-            state.emit_goto(label if jump_eq ^ invert else no_jump)
+            state.emit_goto(label if j_eq else no_jump)
 
         state.emit_transfer(lhs)
-        if jump_gt ^ invert:
+        if j_gt:
             state.emit_goto(label)
         state.emit_label(no_jump)
         state.put_temp(lhs)
@@ -271,17 +280,18 @@ class CompareBase(BoolExpr):
     def emit_test(self, state, label, invert):
         lhs_ex, rhs_ex = self.children
 
+        jump_lt, jump_eq, jump_gt = self.jump_lt ^ invert, self.jump_eq ^ invert, \
+            self.jump_gt ^ invert
+
         if isinstance(rhs_ex, Lit):
-            return self.emit_compare_lit(state, label, invert, lhs_ex, rhs_ex.value, False)
+            return self.emit_compare_lit(state, label, jump_lt, jump_eq, jump_gt, lhs_ex, rhs_ex.value)
         if isinstance(lhs_ex, Lit):
-            return self.emit_compare_lit(state, label, invert, rhs_ex, lhs_ex.value, True)
+            return self.emit_compare_lit(state, label, jump_gt, jump_eq, jump_lt, rhs_ex, lhs_ex.value)
 
         lhs = state.get_temp()
         lhs_ex.emit_nat(state, lhs)
         rhs = state.get_temp()
         rhs_ex.emit_nat(state, rhs)
-
-        jump_lt, jump_eq, jump_gt = self.jump_lt, self.jump_eq, self.jump_gt
 
         monus = state.gensym()
         not_less = state.gensym()
@@ -298,13 +308,13 @@ class CompareBase(BoolExpr):
         state.emit_label(not_less)
         if jump_eq != jump_gt:
             state.emit_dec(lhs)
-            state.emit_goto(label if jump_eq ^ invert else no_jump)
+            state.emit_goto(label if jump_eq else no_jump)
         state.emit_transfer(lhs)
-        state.emit_goto(label if jump_gt ^ invert else no_jump)
+        state.emit_goto(label if jump_gt else no_jump)
 
         state.emit_label(is_less)
         state.emit_transfer(rhs)
-        state.emit_goto(label if jump_lt ^ invert else no_jump)
+        state.emit_goto(label if jump_lt else no_jump)
 
         state.emit_label(no_jump)
 
