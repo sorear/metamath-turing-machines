@@ -106,6 +106,8 @@ class Subroutine:
         self.size = 1 << order
         self.child_map = child_map or {}
 
+InsnInfo = namedtuple('InsnInfo', 'sub labels goto')
+
 def make_dispatcher(child_map, name, order, at_prefix=''):
     """Constructs one or more dispatch states to route to a child map.
 
@@ -115,7 +117,7 @@ def make_dispatcher(child_map, name, order, at_prefix=''):
     read bits going right and fall into the child states after reading
     exactly the prefix."""
     if at_prefix in child_map:
-        return child_map[at_prefix].entry
+        return child_map[at_prefix].sub.entry
     assert len(at_prefix) <= order
     switch = State()
     switch.be(move=1, name=name + '[' + at_prefix + ']',
@@ -150,9 +152,9 @@ class MachineBuilder:
             entry = self.register_common().inc
         else:
             entry = State()
-            entry.be(move=1, next1=entry, next0=self.reg_incr(index-1).entry, name='reg_incr.'+str(index))
+            entry.be(move=1, next1=entry, next0=self.reg_incr(index-1), name='reg_incr.'+str(index))
 
-        return Subroutine(entry, 0, 'reg_incr('+str(index)+')')
+        return entry
 
     @memo
     def reg_decr(self, index):
@@ -163,9 +165,9 @@ class MachineBuilder:
             entry = self.register_common().dec
         else:
             entry = State()
-            entry.be(move=1, next1=entry, next0=self.reg_decr(index-1).entry, name='reg_decr.'+str(index))
+            entry.be(move=1, next1=entry, next0=self.reg_decr(index-1), name='reg_decr.'+str(index))
 
-        return Subroutine(entry, 0, 'reg_decr('+str(index)+')')
+        return entry
 
     @memo
     def reg_init(self):
@@ -284,6 +286,8 @@ class MachineBuilder:
         # first find out where everything is and how big I am
 
         label_offsets = {}
+        label_map = {}
+        goto_map = {}
         real_parts = []
         offset = 0
 
@@ -298,7 +302,11 @@ class MachineBuilder:
             if isinstance(part, Label):
                 # labels take up no space
                 label_offsets[part.name] = offset
-                continue
+                label_map.setdefault(offset, []).append(part.name)
+                continue # not a real_part
+
+            if isinstance(part, Goto):
+                goto_map[offset] = part.name
 
             # parts must be aligned
             while offset % part.size:
@@ -356,7 +364,9 @@ class MachineBuilder:
                             break
                 assert part
             offset_bits = make_bits(offset >> part.order, order - part.order)
-            child_map[offset_bits] = part
+            goto_line = goto_map.get(offset)
+            label_line = label_map.get(offset)
+            child_map[offset_bits] = InsnInfo(part, label_line, goto_line)
             offset += 1 << part.order
 
         return Subroutine(make_dispatcher(child_map, name, order), order, name, child_map=child_map)
@@ -369,8 +379,8 @@ class MachineBuilder:
         self._nextreg += 1
         pad = 0
 
-        inc = self.reg_incr(index)
-        dec = self.reg_decr(index)
+        inc = Subroutine(self.reg_incr(index), 0, 'reg_incr('+name+')')
+        dec = Subroutine(self.reg_decr(index), 0, 'reg_decr('+name+')')
 
         return Register(name, index, inc, dec)
 
@@ -474,11 +484,15 @@ class Machine:
             seen.add(subp)
             print()
             print('NAME:', subp.name, 'ORDER:', subp.order)
-            for offset, subr in sorted(subp.child_map.items()):
-                print('    {offset:{order}} -> {child}'.format(
-                    offset=offset, order=subp.order, child=subr.name
-                ))
-                stack.append(subr)
+            for offset, entry in sorted(subp.child_map.items()):
+                display = '    {offset:{order}} -> {child}'.format(offset=offset, \
+                    order=subp.order, child=entry.sub.name)
+                if entry.goto:
+                    display += ' -> ' + entry.goto
+                for label in entry.labels or ():
+                    display += ' #' + label
+                print(display)
+                stack.append(entry.sub)
 
     def reachable(self):
         """Enumerates reachable states for the generated Turing machine."""
@@ -499,11 +513,25 @@ class Machine:
 
     def print_machine(self):
         """Prints the state-transition table for the generated Turing machine."""
+        reachable = sorted(self.reachable(), key=lambda x: x.name)
+
+        count = {}
+        for state in reachable:
+            count[state.name] = count.get(state.name, 0) + 1
+
+        index = {}
+        renumber = {}
+        for state in reachable:
+            if count[state.name] == 1:
+                continue
+            index[state.name] = index.get(state.name, 0) + 1
+            renumber[state] = state.name + '(#' + str(index[state.name]) + ')'
+
         dirmap = {1: 'R', -1: 'L'}
         for state in sorted(self.reachable(), key=lambda x: x.name):
-            print(state.name, '=',
-                  state.write0, dirmap[state.move0], state.next0.name,
-                  state.write1, dirmap[state.move1], state.next1.name)
+            print(renumber.get(state, state.name), '=',
+                  state.write0, dirmap[state.move0], renumber.get(state.next0, state.next0.name),
+                  state.write1, dirmap[state.move1], renumber.get(state.next1, state.next1.name))
 
     def tm_print(self):
         """Prints the current state of the Turing machine execution."""
