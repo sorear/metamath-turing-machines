@@ -1,0 +1,195 @@
+
+NAME: main() ORDER: 8
+    00000000 -> reg_init
+    00000001 -> reg_init
+    00000010 -> reg_init
+    00000011 -> reg_init
+    00000100 -> reg_init
+    00000101 -> reg_init
+    00000110 -> reg_init
+    00000111 -> reg_init
+    00001    -> transfer(_Gb,_scratch_1,_scratch_2) #gen2
+    000100   -> transfer(_scratch_2,_Gb)
+    00010100 -> reg_decr(_scratch_1)
+    00010101 -> main().jump(21,4) -> gen3
+    00010110 -> reg_decr(_scratch_1)
+    00010111 -> main().jump(21,4) -> gen3
+    00011000 -> reg_decr(_scratch_1)
+    00011001 -> main().jump(21,4) -> gen3
+    00011010 -> reg_decr(_scratch_1)
+    00011011 -> main().jump(21,4) -> gen3
+    00011100 -> reg_decr(_scratch_1)
+    00011101 -> main().jump(21,4) -> gen3
+    0001111  -> noop.1
+    001000   -> transfer(_scratch_1)
+    00100100 -> main().jump(130,7) -> gen1
+    00100101 -> noop.0 #gen3
+    0010011  -> noop.1
+    00101    -> noop.3
+    0011     -> noop.4
+    01       -> square(_Ga,_Gb)
+    10000000 -> incr(_Ga)
+    10000001 -> main().jump(8,8) -> gen2
+    10000010 -> halt #gen1
+    10000011 -> noop.0
+    100001   -> noop.2
+    10001    -> noop.3
+    1001     -> noop.4
+    101      -> noop.5
+    11       -> noop.6
+
+NAME: noop.6 ORDER: 6
+
+NAME: noop.5 ORDER: 5
+
+NAME: noop.4 ORDER: 4
+
+NAME: noop.3 ORDER: 3
+
+NAME: noop.2 ORDER: 2
+
+NAME: noop.0 ORDER: 0
+
+NAME: halt ORDER: 0
+
+NAME: main().jump(8,8) ORDER: 0
+
+NAME: incr(_Ga) ORDER: 0
+     -> reg_incr(_Ga)
+
+NAME: reg_incr(_Ga) ORDER: 0
+
+NAME: square(_Ga,_Gb) ORDER: 6
+    000    -> transfer(_Ga,_scratch_2,_scratch_3)
+    0010   -> transfer(_scratch_3,_Ga)
+    001100 -> reg_decr(_scratch_2) #gen4
+    001101 -> square(_Ga,_Gb).jump(29,4) -> gen5
+    00111  -> noop.1
+    010    -> transfer(_Ga,_scratch_1,_scratch_3)
+    0110   -> transfer(_scratch_3,_Ga)
+    011100 -> square(_Ga,_Gb).jump(12,5) -> gen4
+    011101 -> noop.0 #gen5
+    01111  -> noop.1
+    1000   -> transfer(_Gb)
+    1001   -> transfer(_scratch_1,_Gb)
+    101    -> noop.3
+    11     -> noop.4
+
+NAME: transfer(_scratch_1,_Gb) ORDER: 2
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gb).jump(4,2) -> zero
+    10 -> reg_incr(_Gb)
+    11 -> transfer(_scratch_1,_Gb).jump(0,2) -> again
+
+NAME: transfer(_scratch_1,_Gb).jump(0,2) ORDER: 0
+
+NAME: reg_incr(_Gb) ORDER: 0
+
+NAME: transfer(_scratch_1,_Gb).jump(4,2) ORDER: 0
+
+NAME: reg_decr(_scratch_1) ORDER: 0
+
+NAME: transfer(_Gb) ORDER: 2
+    00 -> reg_decr(_Gb) #again
+    01 -> transfer(_Gb).jump(3,1) -> zero
+    10 -> transfer(_Gb).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_Gb).jump(0,2) ORDER: 0
+
+NAME: transfer(_Gb).jump(3,1) ORDER: 0
+
+NAME: reg_decr(_Gb) ORDER: 0
+
+NAME: noop.1 ORDER: 1
+
+NAME: square(_Ga,_Gb).jump(12,5) ORDER: 0
+
+NAME: transfer(_scratch_3,_Ga) ORDER: 2
+    00 -> reg_decr(_scratch_3) #again
+    01 -> transfer(_scratch_3,_Ga).jump(4,2) -> zero
+    10 -> reg_incr(_Ga)
+    11 -> transfer(_scratch_3,_Ga).jump(0,2) -> again
+
+NAME: transfer(_scratch_3,_Ga).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_3,_Ga).jump(4,2) ORDER: 0
+
+NAME: reg_decr(_scratch_3) ORDER: 0
+
+NAME: transfer(_Ga,_scratch_1,_scratch_3) ORDER: 3
+    000 -> reg_decr(_Ga) #again
+    001 -> transfer(_Ga,_scratch_1,_scratch_3).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_3)
+    100 -> transfer(_Ga,_scratch_1,_scratch_3).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_Ga,_scratch_1,_scratch_3).jump(0,3) ORDER: 0
+
+NAME: reg_incr(_scratch_3) ORDER: 0
+
+NAME: reg_incr(_scratch_1) ORDER: 0
+
+NAME: transfer(_Ga,_scratch_1,_scratch_3).jump(5,2) ORDER: 0
+
+NAME: reg_decr(_Ga) ORDER: 0
+
+NAME: square(_Ga,_Gb).jump(29,4) ORDER: 0
+
+NAME: reg_decr(_scratch_2) ORDER: 0
+
+NAME: transfer(_Ga,_scratch_2,_scratch_3) ORDER: 3
+    000 -> reg_decr(_Ga) #again
+    001 -> transfer(_Ga,_scratch_2,_scratch_3).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_2)
+    011 -> reg_incr(_scratch_3)
+    100 -> transfer(_Ga,_scratch_2,_scratch_3).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_Ga,_scratch_2,_scratch_3).jump(0,3) ORDER: 0
+
+NAME: reg_incr(_scratch_2) ORDER: 0
+
+NAME: transfer(_Ga,_scratch_2,_scratch_3).jump(5,2) ORDER: 0
+
+NAME: main().jump(130,7) ORDER: 0
+
+NAME: transfer(_scratch_1) ORDER: 2
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1).jump(3,1) -> zero
+    10 -> transfer(_scratch_1).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_scratch_1).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_1).jump(3,1) ORDER: 0
+
+NAME: main().jump(21,4) ORDER: 0
+
+NAME: transfer(_scratch_2,_Gb) ORDER: 2
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_Gb).jump(4,2) -> zero
+    10 -> reg_incr(_Gb)
+    11 -> transfer(_scratch_2,_Gb).jump(0,2) -> again
+
+NAME: transfer(_scratch_2,_Gb).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_2,_Gb).jump(4,2) ORDER: 0
+
+NAME: transfer(_Gb,_scratch_1,_scratch_2) ORDER: 3
+    000 -> reg_decr(_Gb) #again
+    001 -> transfer(_Gb,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gb,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_Gb,_scratch_1,_scratch_2).jump(0,3) ORDER: 0
+
+NAME: transfer(_Gb,_scratch_1,_scratch_2).jump(5,2) ORDER: 0
+
+NAME: reg_init ORDER: 0
