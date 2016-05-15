@@ -14,6 +14,8 @@ parser.add_argument('--run-tm', action='store_true', \
     help='Run the turing machine')
 parser.add_argument('--dont-compress', action='store_true', \
     help='Keep indistinguishable states')
+parser.add_argument('--no-cfg-optimize', action='store_true', \
+    help='Disable control-flow optimizer')
 args = parser.parse_args()
 
 ast, = nqlgrammar.grammar.parseFile(args.nql_file, parseAll=True)
