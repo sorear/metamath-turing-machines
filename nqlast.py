@@ -85,6 +85,15 @@ class NatExpr(Node):
         for temp in temps:
             state.put_temp(temp)
 
+    def emit_nat_add(self, state, out):
+        if self.is_additive():
+            self.emit_nat(state, out)
+        else:
+            temp = state.get_temp()
+            self.emit_nat(state, temp)
+            state.emit_transfer(temp, out)
+            state.put_temp(temp)
+
     def emit_nat_op(self, state, target, temps):
         """Calculate the value of this expression with the arguments already
         evaluated.
@@ -116,20 +125,21 @@ class Mul(NatExpr):
     def is_additive(self):
         return True
 
-    def emit_nat_op(self, state, out, args):
-        lhs, rhs = args
-        save = state.get_temp()
+    def emit_nat(self, state, out):
+        lhs_ex, rhs_ex = self.children
+        if lhs_ex.is_additive() and not rhs_ex.is_additive():
+            lhs_ex, rhs_ex = rhs_ex, lhs_ex
+        lhs = state.get_temp()
+        lhs_ex.emit_nat(state, lhs)
         again = state.gensym()
         done = state.gensym()
         state.emit_label(again)
         state.emit_dec(lhs)
         state.emit_goto(done)
-        state.emit_transfer(rhs, save, out)
-        state.emit_transfer(save, rhs)
+        rhs_ex.emit_nat_add(state, out)
         state.emit_goto(again)
         state.emit_label(done)
-        state.emit_transfer(rhs)
-        state.put_temp(save)
+        state.put_temp(lhs)
 
 class Div(NatExpr):
     child_types = (NatExpr, NatExpr)
@@ -172,10 +182,9 @@ class Add(NatExpr):
     def is_additive(self):
         return True
 
-    def emit_nat_op(self, state, out, args):
-        # TODO: we don't need temps for the additive children
-        for arg in args:
-            state.emit_transfer(arg, out)
+    def emit_nat(self, state, out):
+        for child in self.children:
+            child.emit_nat_add(state, out)
 
 class Lit(NatExpr):
     def __init__(self, **kwargs):
