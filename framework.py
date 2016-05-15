@@ -1,16 +1,17 @@
 """Framework for building Turing machines using a register machine abstraction
 and binary decision diagrams in place of subprograms."""
-# Tape layout: PC:bit[NNN] ( !fence:bit lcursor:bit 0 1* 0 )* .
+# Tape layout: PC:bit[NNN] 0 0 ( 1 1* 0 )*
+#
 # each thing after the PC is a unary register.
-# to make initial tape state (all zero) useful, fence is active low and cursor
-# is one for all cells _left_ of the cursor.
-# the cursor may never touch the right fence.
+#
 # There is a "dispatch" state which assumes the head is at position zero, and
 # reads PC bits through a decision tree to find out what to do.
+#
 # The decision tree has shared subtrees - this is how we handle "subroutines".
 # Naturally these shared subtrees have to handle different "contexts".
-# we shift 1 left of the PC MSB during carry phases.  If this is a problem for
-# you, add an extra state to shift right at the beginning.
+#
+# we shift 1 left of the PC MSB during carry phases; the initial state is the
+# leftmost shift state, so the total shift is always non-negative.
 
 from collections import namedtuple
 import argparse
@@ -134,177 +135,79 @@ class MachineBuilder:
         self._nextreg = 0
         self._memos = {}
 
-    # leaf procs which implement shifting and register machine operations
+    # leaf procs which implement register machine operations
     # on entry to a leaf proc the tape head is just after the PC
 
-    # TODO: can probably remove 20+ states here by getting rid of the cursors
+    @memo
+    def reg_incr(self, index):
+        """Primitive subroutine which decrements a register."""
+        if index == -2:
+            entry = self.register_common().inc
+        else:
+            entry = State()
+            entry.be(move=1, next1=entry, next0=self.reg_incr(index-1).entry, name='reg_incr.'+str(index))
+
+        return Subroutine(entry, 0, 'reg_incr('+str(index)+')')
 
     @memo
-    def cursor_left(self):
-        """Primitive subroutine which moves the register cursor left by 1.
+    def reg_decr(self, index):
+        """Primitive subroutine which decrements a register.  The PC will be
+        incremented by 2 if successful; if the register was zero, it will be
+        unchanged and the PC will be incremented by 1."""
+        if index == -2:
+            entry = self.register_common().dec
+        else:
+            entry = State()
+            entry.be(move=1, next1=entry, next0=self.reg_decr(index-1).entry, name='reg_decr.'+str(index))
 
-        Attempting to move the cursor before the first register results in
-        undefined behavior."""
-        (scan_fence, scan_cursor, scan_lend, scan_reg, move_fence,
-         move_rend, move_reg, move_cursor) = (State() for x in range(8))
-        # Skip right until we find the register with cursor=0
-        scan_fence.be(move=1, next=scan_cursor, name='left.scan.fence')
-        scan_cursor.be(move0=-1, next0=move_fence, move1=1,
-                       next1=scan_lend, name='left.scan.cursor')
-        scan_lend.be(move=1, next=scan_reg, name='left.scan.lend')
-        scan_reg.be(move=1, next0=scan_fence, next1=scan_reg, name='left.scan.reg')
-
-        # Skip one left
-        move_fence.be(move=-1, next=move_rend, name='left.move.fence')
-        move_rend.be(move=-1, next=move_reg, name='left.move.rend')
-        move_reg.be(move=-1, next0=move_cursor, next1=move_reg, name='left.move.reg')
-
-        # Clear left-of-cursor bit
-        move_cursor.be(move=-1, next=self.common_reset().fence, write='0', name='left.move.cursor')
-
-        # Skip left until first=1
-        # Fall into nextstate()
-        # (handled in common_reset)
-
-        return Subroutine(scan_fence, 0, 'cursor_left')
+        return Subroutine(entry, 0, 'reg_decr('+str(index)+')')
 
     @memo
-    def cursor_home(self):
-        """Primitive subroutine which moves the register cursor to position zero."""
-        (scan_fence, scan_fence_0, scan_cursor, scan_lend,
-         scan_reg) = (State() for i in range(5))
-        # Just skip to the end and clear all the cursor bits
-        scan_fence_0.be(move=1, next=scan_cursor, name='home.scan.fence_0')
-        scan_cursor.be(move=1, next=scan_lend, write='0', name='home.scan.cursor')
-        scan_lend.be(move=1, next=scan_reg, name='home.scan.lend')
-        scan_reg.be(move=1, next0=scan_fence, next1=scan_reg, name='home.scan.reg')
-        scan_fence.be(move0=-1, next0=self.common_reset().rend, move1=1,
-                      next=scan_cursor, name='home.scan.fence')
-
-        return Subroutine(scan_fence_0, 0, 'cursor_home')
+    def reg_init(self):
+        """Primitive subroutine which initializes a register.  Call this N
+        times before using registers less than N."""
+        return Subroutine(self.register_common().init, 0, 'reg_init')
 
     @memo
-    def cursor_right(self):
-        """Primitive subroutine which moves the register cursor right by 1."""
-        # this is the only place we adjust the fences
-        (scan_fence, scan_cursor, scan_lend, scan_reg, move_lend, move_reg,
-         move_fence) = (State() for i in range(7))
+    def register_common(self):
+        """Primitive register operations start with the tape head on the first
+        1 bit of a register, and exit by running back into the dispatcher."""
+        (inc_shift_1, inc_shift_0, dec_init, dec_check, dec_scan_1,
+         dec_scan_0, dec_scan_done, dec_shift_0, dec_shift_1, dec_restore,
+         return_0, return2_0, return_1, return2_1, init_f1, init_f2,
+         init_scan_1, init_scan_0) = (State() for i in range(18))
 
-        # skip right until we find the first cursor=0
-        scan_fence.be(move=1, next=scan_cursor, name='right.scan.fence')
-        scan_cursor.be(move=1, next0=move_lend, write0='1', next1=scan_lend,
-                       name='right.scan.cursor')
-        scan_lend.be(move=1, next=scan_reg, name='right.scan.lend')
-        scan_reg.be(move=1, next0=scan_fence, next1=scan_reg, name='right.scan.reg')
+        # Initialize routine
+        init_f1.be(move=1, next=init_f2, name='init.f1')
+        init_f2.be(move=1, next=init_scan_0, name='init.f2')
+        init_scan_1.be(move=1, next1=init_scan_1, next0=init_scan_0, name='init.scan_1') # only 0 is possible
+        init_scan_0.be(write0='1', move0=-1, next0=return_1, move1=1, next1=init_scan_1, name='init.scan_0')
 
-        # we just set the cursor bit.  need to ensure we didn't just land on
-        # the right fence -> clear !fence bit on where we landed.
-        move_lend.be(move=1, next=move_reg, name='right.move.lend')
-        move_reg.be(move=1, next0=move_fence, next1=move_reg, name='right.move.reg')
-        move_fence.be(move=-1, next=self.common_reset().rend, write='1', name='right.move.fence')
+        # Increment the register, the first 1 bit of which is under the tape head
+        inc_shift_1.be(move=1, write='1', next0=inc_shift_0, next1=inc_shift_1, name='inc.shift_1')
+        inc_shift_0.be(write='0', next0=return_0, move0=-1, next1=inc_shift_1, move1=1, name='inc.shift_0')
 
-        return Subroutine(scan_fence, 0, 'cursor_right')
+        # Decrementing is a bit more complicated, we need to mark the register we're on
+        dec_init.be(write='0', move=1, next=dec_check, name='dec.init')
+        dec_check.be(move0=-1, next0=dec_restore, move1=1, next1=dec_scan_1, name='dec.check')
 
-    @memo
-    def cursor_incr(self):
-        """Primitive subroutine which increments the register under the cursor."""
-        (scan_fence, scan_cursor, scan_lend, scan_reg, shift_start_lend,
-         shift_reg_1, shift_fence, shift_cursor, shift_lend,
-         shift_reg_0, exit_fence) = (State() for i in range(11))
-        # find the cursor
-        scan_fence.be(move=1, next=scan_cursor, name='incr.scan.fence')
-        scan_cursor.be(move=1, next1=scan_lend, next0=shift_start_lend, name='incr.scan.cursor')
-        scan_lend.be(move=1, next=scan_reg, name='incr.scan.lend')
-        scan_reg.be(move=1, next0=scan_fence, next1=scan_reg, name='incr.scan.reg')
+        dec_scan_1.be(move=1, next1=dec_scan_1, next0=dec_scan_0, name='dec.scan_1')
+        dec_scan_0.be(move1=1, next1=dec_scan_1, move0=-1, next0=dec_scan_done, name='dec.scan_0')
+        # scan_done = on 0 after last reg
+        dec_scan_done.be(move=-1, next=dec_shift_0, name='dec.scan_done')
+        dec_shift_0.be(write='0', move0=-1, next0=return2_0, move1=-1, next1=dec_shift_1, name='dec.shift_0')
+        # if shifting 0 onto 0, we're moving the marker we created
+        # let it overlap the fence
+        dec_shift_1.be(write='1', move=-1, next0=dec_shift_0, next1=dec_shift_1, name='dec.shift_1')
 
-        # insert a 1 and shift everything right until the fence
-        shift_start_lend.be(move=1, next=shift_reg_1, name='incr.shift.start_lend')
-        shift_reg_1.be(move=1, write='1', next0=shift_fence, next1=shift_reg_1,
-                       name='incr.shift.reg_1')
-        shift_fence.be(move=1, write='0', next0=exit_fence, next1=shift_cursor,
-                       name='incr.shift.fence')
-        shift_cursor.be(move=1, write='1', next=shift_lend, name='incr.shift.cursor')
-        shift_lend.be(move=1, write='0', next=shift_reg_0, name='incr.shift.lend')
-        shift_reg_0.be(move=1, write='0', next0=shift_fence, next1=shift_reg_1,
-                       name='incr.shift.reg_0')
-        exit_fence.be(move=-1, next=self.common_reset().rend, name='incr.exit.fence')
+        dec_restore.be(write='1', move=-1, next=return_1, name='dec.restore')
 
-        # scroll back (handled in common_reset)
-        return Subroutine(scan_fence, 0, 'cursor_incr')
+        return_0.be(move=-1, next0=self.nextstate(), next1=return_1, name='return.0')
+        return2_0.be(move=-1, next0=self.nextstate_2(), next1=return2_1, name='return2.0')
+        return_1.be(move=-1, next0=return_0, next1=return_1, name='return.1')
+        return2_1.be(move=-1, next0=return2_0, next1=return2_1, name='return2.1')
 
-    @memo
-    def cursor_decr(self):
-        """Primitive subroutine which decrements the register with the cursor.
-
-        If the register was nonzero, execution continues at PC+2.  If it was
-        zero, the register will not be changed and execution will continue at
-        PC+1."""
-        (scan_fence, scan_cursor, scan_lend, scan_reg, seek_lend_0,
-         seek_reg_0, bail_lend, bail_cursor, seek_reg, seek_fence,
-         seek_cursor, seek_lend, shift_rend_0, shift_rend_1, shift_reg_0,
-         shift_reg_1, shift_cursor, shift_fence,
-         fixup_lend) = (State() for i in range(19))
-        # find the cursor
-        scan_fence.be(move=1, next=scan_cursor, name='decr.scan.fence')
-        scan_cursor.be(move=1, next1=scan_lend, next0=seek_lend_0, write0='1',
-                       name='decr.scan.cursor')
-        scan_lend.be(move=1, next=scan_reg, name='decr.scan.lend')
-        scan_reg.be(move=1, next1=scan_reg, next0=scan_fence, name='decr.scan.reg')
-
-        # bail if zero
-        seek_lend_0.be(move=1, next=seek_reg_0, name='decr.seek.lend_0')
-        seek_reg_0.be(move1=1, next1=seek_reg, move0=-1, next0=bail_lend, name='decr.seek.reg_0')
-        bail_lend.be(move=-1, next=bail_cursor, name='decr.bail.lend')
-        bail_cursor.be(move=-1, write='0', next=self.common_reset().fence, name='decr.bail.cursor')
-
-        # temporarily move it right (done by scan_cursor)
-        # keep going until the right fence
-        seek_reg.be(move=1, next0=seek_fence, next1=seek_reg, name='decr.seek.reg')
-        seek_fence.be(move0=-1, next0=shift_rend_0, move1=1, next1=seek_cursor,
-                      name='decr.seek.fence')
-        seek_cursor.be(move=1, next=seek_lend, name='decr.seek.cursor')
-        seek_lend.be(move=1, next=seek_reg, name='decr.seek.lend')
-
-        # shift everything left until the cursor, then shift that too
-        shift_rend_0.be(write='0', move=-1, next=shift_reg_0, name='decr.shift.rend_0')
-        shift_rend_1.be(write='1', move=-1, next=shift_reg_0, name='decr.shift.rend_1')
-        shift_reg_0.be(write='0', move=-1, next1=shift_reg_1,
-                       next0=shift_cursor, name='decr.shift.reg_0')
-        shift_reg_1.be(write='1', move=-1, next1=shift_reg_1,
-                       next0=shift_cursor, name='decr.shift.reg_1')
-        shift_cursor.be(write0='0', move0=-1, next0=shift_fence, write1='0',
-                        move1=1, next1=fixup_lend, name='decr.shift.cursor')
-        shift_fence.be(write='0', move=-1, next=shift_rend_1, name='decr.shift.fence')
-
-        fixup_lend.be(write='0', move=-1, next=self.common_reset().cursor_skip,
-                      name='decr.fixup.lend')
-
-        return Subroutine(scan_fence, 0, 'cursor_decr')
-
-    @memo
-    def common_reset(self):
-        """Handles restoring the tape head and running into the dispatching state
-        for all cursor operations.
-
-        Returns a structure of states (not a subroutine) named by the class of
-        head position; cursor_skip advances PC by 2, for the dec() success case.
-        You must be before the right fence to use these states."""
-        (reset_fence, reset_rend, reset_reg, reset_cursor, reset2_fence,
-         reset2_rend, reset2_reg, reset2_cursor) = (State() for i in range(8))
-
-        reset_fence.be(move=-1, next1=reset_rend, next0=self.nextstate(), name='reset.fence')
-        reset_rend.be(move=-1, next=reset_reg, name='reset.rend')
-        reset_reg.be(move=-1, next0=reset_cursor, next1=reset_reg, name='reset.reg')
-        reset_cursor.be(move=-1, next=reset_fence, name='reset.cursor')
-
-        reset2_fence.be(move=-1, next1=reset2_rend, next0=self.nextstate_2(),
-                        name='resetskip.fence')
-        reset2_rend.be(move=-1, next=reset2_reg, name='resetskip.rend')
-        reset2_reg.be(move=-1, next0=reset2_cursor, next1=reset2_reg, name='resetskip.reg')
-        reset2_cursor.be(move=-1, next=reset2_fence, name='resetskip.cursor')
-
-        return namedtuple('common_reset', 'cursor_skip fence rend')(
-            reset2_cursor, reset_fence, reset_rend)
+        return namedtuple('register_common', 'inc dec init')(inc_shift_1, dec_init, init_f1)
 
     # Implementing the subroutine model
 
@@ -377,6 +280,13 @@ class MachineBuilder:
         real_parts = []
         offset = 0
 
+        if name == 'main()':
+            # inject code to initialize registers (a bit of a hack)
+            regcount = self._nextreg
+            while regcount & (regcount - 1):
+                regcount += 1
+            parts = regcount * (self.reg_init(), ) + parts
+
         for part in parts:
             if isinstance(part, Label):
                 # labels take up no space
@@ -425,18 +335,9 @@ class MachineBuilder:
         index = self._nextreg
         self._nextreg += 1
         pad = 0
-        # the dec routine needs to be a power of two size, or else the
-        # invisible end padding will interfere with skip-next semantics
-        while (index + pad + 2) & (index + pad + 1):
-            pad += 1
 
-        inc = self.makesub(name='inc.' + name, \
-            *((self.cursor_home(),) + index * (self.cursor_right(),) + \
-            pad * (self.noop(0),) + (self.cursor_incr(),)))
-
-        dec = self.makesub(name='dec.' + name, \
-            *((self.cursor_home(),) + index * (self.cursor_right(),) + \
-            pad * (self.noop(0),) + (self.cursor_decr(),)))
+        inc = self.reg_incr(index)
+        dec = self.reg_decr(index)
 
         return Register(name, index, inc, dec)
 
