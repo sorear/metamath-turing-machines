@@ -368,12 +368,16 @@ class Assign(VoidExpr):
     # TODO: when assigning something that doesn't use the old value, it can be constructed in place
 
     def emit_stmt(self, state):
-        temp = state.get_temp()
         lhs, rhs = self.children
-        rhs.emit_nat(state, temp)
-        state.emit_transfer(state.resolve(lhs.name))
-        state.emit_transfer(temp, state.resolve(lhs.name))
-        state.put_temp(temp)
+        if isinstance(rhs, Lit):
+            state.emit_transfer(state.resolve(lhs.name))
+            rhs.emit_nat(state, state.resolve(lhs.name))
+        else:
+            temp = state.get_temp()
+            rhs.emit_nat(state, temp)
+            state.emit_transfer(state.resolve(lhs.name))
+            state.emit_transfer(temp, state.resolve(lhs.name))
+            state.put_temp(temp)
 
 class Block(VoidExpr):
     child_types = VoidExpr
