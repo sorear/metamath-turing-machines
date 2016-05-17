@@ -366,6 +366,17 @@ class And(BoolExpr):
 class Or(And):
     is_or = True
 
+class BoolConst(BoolExpr):
+    def emit_test(self, state, label, invert):
+        if self.value ^ invert:
+            state.emit_goto(label)
+
+class TrueConst(BoolConst):
+    value = True
+
+class FalseConst(BoolConst):
+    value = False
+
 class VoidExpr(Node):
     """Base class for expressions which return no value."""
 

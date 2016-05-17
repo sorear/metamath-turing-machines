@@ -7,7 +7,7 @@ def _grammar():
 
     integer_ = pp.Word(pp.nums).setName('integer').setParseAction(lambda t: int(t[0]))
     reserved_words = {'while', 'proc', 'global', 'if', 'return', 'else', 'elsif', 'switch',
-                      'case', 'break', 'default'}
+                      'case', 'break', 'default', 'true', 'false'}
     identifier_ = pp.Word(pp.alphas, pp.alphanums + '_') \
         .addCondition((lambda t: t[0] not in reserved_words), \
             message='reserved word').setName('identifier')
@@ -23,6 +23,8 @@ def _grammar():
     case_ = pp.Keyword('case')
     default_ = pp.Keyword('default')
     break_ = pp.Keyword('break')
+    true_ = pp.Keyword('true')
+    false_ = pp.Keyword('false')
     lt_ = pp.Literal('<') + ~pp.Literal('=')
     gt_ = pp.Literal('>') + ~pp.Literal('=')
     le_ = pp.Literal('<=')
@@ -56,8 +58,10 @@ def _grammar():
 
     pri_int = integer_().setParseAction(a(lambda l,t: nql.Lit(lineno=l, value=int(t[0]))))
     pri_reg = identifier_().setParseAction(a(lambda l,t: nql.Reg(lineno=l, name=t[0])))
+    pri_true = true_().setParseAction(lambda t: nql.TrueConst())
+    pri_false = false_().setParseAction(lambda t: nql.FalseConst())
     pri_paren = (lpar_ + expr + rpar_)
-    pri_expr = pri_int | pri_reg | pri_paren
+    pri_expr = pri_int | pri_true | pri_false | pri_reg | pri_paren
 
     def callop(op, line, *children):
         if isinstance(op, type):
