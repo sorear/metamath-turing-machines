@@ -26,7 +26,7 @@ proc modulus(x, y, out) {
 }
 
 /* Figures out if x is prime, and puts the output in out */
-/* Does not modify x, modifies y */
+/* Does not modify x, modifies hold */
 proc isPrime(x, hold, out) {
     if (x == 1) {
         zero(out);
@@ -50,51 +50,31 @@ proc isPrime(x, hold, out) {
 
 /* eta(j) = p if there exists k,p s.t. j = p^k, p is prime */
 /* eta(j) = 1 otherwise */
+/* delta(x) = \product_{n<x} \product_{j<=n} eta(j) */
+/* So delta(x) = \product_{prime p<x} \product_{p^k < x} p^{x-p^k} */
 
-proc eta(j, h1, h2, out) {
+proc delta(x, p, pk, t, out) {
     one(out);
-    while (j > out) {
-        incr(out);
-
-        isPrime(out, h1, h2);
-
-        /* is the number we're trying indeed prime? */
-        if (h2 != 0) {
-            one(h2);
-            while (j > h2) {
-                h2 = h2 * out;
-                if (h2 == j) {
-                    return;
+    one(p);
+    while (p < x) {
+        isPrime(p, pk, t);
+        if (t == 0) {
+            pk = p;
+            while (pk < x) {
+                t = pk;
+                while (t < x) {
+                    out = out * p;
+                    incr(t);
                 }
+                pk = pk * p;
             }
         }
-    }
-
-    one(out);
-    return;
-}
-
-/* delta(x) = \product_{n<x} \product_{j<=n} eta(j) */
-
-proc delta(x, nCount, jCount, h1, h2, etaOut, out) {
-    one(out);
-    one(nCount);
-
-    while (nCount < x) {
-        one(jCount);
-
-        while (jCount <= nCount) {
-            eta(jCount, h1, h2, etaOut);
-            out = out * etaOut;
-
-            incr(jCount);
-        }
-
-        incr(nCount);
+        incr(p);
     }
 
     return;
 }
+
 
 /* out = x^2 */
 proc square(x, out) {
@@ -210,7 +190,7 @@ proc main() {
         incr(x);
         /* print x; */
 
-        delta(x, aOfX, bOfX, lOfX, rOfX, h1, h2);
+        delta(x, aOfX, bOfX, lOfX, h2);
         factorial(h2, aOfX, deltaXFac);
 
         a(deltaXFac, bOfX, h2, aOfX);
