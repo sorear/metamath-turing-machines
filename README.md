@@ -48,3 +48,29 @@ Print intermediate call tree code (very relevant for debugging):
 Built-in Turing machine executor:
 
     python3 nqlaconic.py --run-tm squaresaresmall.nql
+
+# Optimization ideas
+
+## Backend (framework.py)
+
+ * `while (x) { x = x - 1; ... }` generates an inc immediately followed by a dec; could be peepholed (20 minutes, 0.5%)
+
+ * Inlining subs used once to reduce nop padding (1 hour, 2%)
+
+ * CFG optimizer could break down code into basic blocks and rearrange them to minimize unconditional jumps (4 hours, 1%)
+
+ * Hill-climbing or genetic global optimizer to rearrange nops and jumps to maximize sharing (16 hours, 5%)
+
+## Middle end (nqlast.py)
+
+ * Global live-range tracking to do destructive reads when possible and eliminate redundant zeroing (16 hours, 5%)
+
+ * Local variables and interprocedural register allocation will cut down on the number of live variables and transfer subs (8 hours, 2%)
+
+## Specific test programs
+
+ * ZF: Replace ax-17 with several other axioms to get rid of "var_not_used" (WIP, 15%)
+
+ * ZF: combine all non-propositional axioms into a giant conjunction to save on control flow (WIP, 50%)
+
+ * ZF: Rewrite pair and unpair to use fewer multiplications and divisions (1 hour, 15%)
