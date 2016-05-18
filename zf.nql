@@ -3,6 +3,7 @@
 global t0;
 global t1;
 
+/* NB If you change the pairing function, check the micro-optimisation in main() */
 proc pair(out, in1, in2) {
     t0 = in1 + in2;
     out = (t0 * (t0 + 1)) / 2 + in2;
@@ -308,10 +309,14 @@ global nextproof;
 proc main() {
     while (true) {
         valid = 1;
-        wstack = 0;
+
+        /* Micro-optimisation */
+        /*wstack = 0;
         t2 = 1;
         push(wstack, t2);
-        push(wstack, t2);
+        push(wstack, t2);*/
+        wstack = 4;
+
         weq();
         wn();
         /* we just pushed -. v0 = v0 , which should not be provable */
