@@ -3,20 +3,23 @@
 global t0;
 global t1;
 
+/* NB If you change the pairing function, check the micro-optimisation in main() */
 proc pair(out, in1, in2) {
     t0 = in1 + in2;
-    out = (t0 * (t0 + 1)) / 2 + in2;
+    out = in2 + (t0 * (t0 + 1)) / 2;
 }
 
 proc unpair(out1, out2, in) {
     t0 = 0;
-    while (2 * in >= t0 * (t0 + 1)) {
+    t1 = 0; /* invariant: t1 = t0 * (t0 + 1) / 2 */
+    while (in >= t1) {
         t0 = t0 + 1;
+        t1 = t1 + t0;
     }
+    t1 = t1 - t0;
     t0 = t0 - 1;
-    t1 = in - (t0 * (t0 + 1)) / 2;
-    out2 = t1;
-    out1 = t0 - t1;
+    out2 = in - t1;
+    out1 = t0 - out2;
 }
 
 proc push(stack, var) { pair(stack, var, stack); }
@@ -306,14 +309,16 @@ proc verify() {
 global nextproof;
 
 proc main() {
-    valid = 0;
-
-    while (valid == 0) {
+    while (true) {
         valid = 1;
-        wstack = 0;
+
+        /* Micro-optimisation */
+        /*wstack = 0;
         t2 = 1;
         push(wstack, t2);
-        push(wstack, t2);
+        push(wstack, t2);*/
+        wstack = 4;
+
         weq();
         wn();
         /* we just pushed -. v0 = v0 , which should not be provable */
@@ -325,5 +330,8 @@ proc main() {
         }
         nextproof = nextproof + 1;
         /* if we're valid here, we found a contradiction in ZF */
+        if (valid > 0) {
+            return;
+        }
     }
 }
