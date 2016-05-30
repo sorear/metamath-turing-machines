@@ -1,0 +1,52 @@
+/* sent to me via e-mail from Yuri Matiyasevich and Scott Aaronson */
+
+global x;
+global lcm;
+global l;
+global num;
+global denom;
+global i;
+global a;
+global b;
+global c;
+global d;
+
+proc main() {
+    /* x = 0; */
+    lcm = 1;
+    while (true) {
+        x = x + 1;
+        l = lcm;
+        while (lcm != (lcm / l) * l || lcm != (lcm / x) * x) {
+            lcm = lcm + 1;
+        }
+        if (x > 253) {
+            num = 0;
+            denom = 1;
+            i = 1;
+            while (i <= lcm) {
+                num = num * i + denom;
+                denom = denom * i;
+                i = i + 1;
+            }
+            a = num - denom * x;
+            a = a * a;
+            b = denom * denom;
+            c = 0;
+            d = 1;
+            i = 1;
+            while (i <= x) {
+                c = c * i + d;
+                d = d * i;
+                i = i + 1;
+            }
+            c = c * c;
+            c = c * c * x;
+            d = d * d;
+            d = d * d;
+            if (a * d > b * c) {
+                return;
+            }
+        }
+    }
+}
