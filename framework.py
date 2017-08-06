@@ -500,12 +500,12 @@ class MachineBuilder:
         """Subprogram which moves values between registers.
 
         The source register will be cleared, and its value will be added to each to register."""
-        name = 'transfer(' + ','.join([source.name] + [x.name for x in to]) + ')'
+        name = 'transfer(' + ','.join([source.name] + [x.name for x in sorted(to)]) + ')'
         return self.makesub(
             Label('again'),
             source.dec,
             Goto('zero'),
-            *([tox.inc for tox in to] + [
+            *([tox.inc for tox in sorted(to)] + [
                 Goto('again'),
                 Label('zero'),
             ]),
