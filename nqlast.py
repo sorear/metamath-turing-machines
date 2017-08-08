@@ -548,7 +548,7 @@ class Program(Node):
 class SubEmitter:
     """Tracks state while lowering a _SubDef to a call sequence."""
 
-    def __init__(self, register_map, machine_builder):
+    def __init__(self, register_map, machine_builder, name):
         self._register_map = register_map
         self._machine_builder = machine_builder
         self._scratch_next = 0
@@ -557,6 +557,7 @@ class SubEmitter:
         self._output = []
         self._return_label = None
         self.break_label = None
+        self.name = name
 
     def emit_transfer(self, *regs):
         self._output.append(self._machine_builder.transfer(*regs))
@@ -574,6 +575,9 @@ class SubEmitter:
         self._output.append(Goto(label))
 
     def emit_return(self):
+        if self.name == 'main':
+            self.emit_halt()
+            return
         if not self._return_label:
             self._return_label = self.gensym()
         self.emit_goto(self._return_label)
@@ -683,11 +687,10 @@ class AstMachine(MachineBuilder):
     def instantiate(self, name, args):
         defn = self._ast.by_name[name]
         assert isinstance(defn, ProcDef)
-        emit = SubEmitter(dict(zip(defn.parameters, args)), self)
+        emit = SubEmitter(dict(zip(defn.parameters, args)), self, name)
         defn.children[0].emit_stmt(emit)
-        emit.close_return()
-        if name == 'main':
-            emit.emit_halt()
+        if name != 'main':
+            emit.close_return()
         return self.makesub(name=name + '(' + ','.join(args) + ')', *emit._output)
 
     def main(self):

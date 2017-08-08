@@ -16,4 +16,5 @@ proc main() {
         square(a, b);
         incr(a);
     }
+    return;
 }

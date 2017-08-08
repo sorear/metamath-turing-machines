@@ -334,101 +334,99 @@ proc cparam(p) {
 
 
 proc main() {
-    while (true) {
-        if (prooflist == 0) {
-            prooflist = nextproof;
-            nextproof = nextproof + 1;
-        }
-        prooflist = prooflist - 1;
+    if (prooflist == 0) {
+        prooflist = nextproof;
+        nextproof = nextproof + 1;
+    }
+    prooflist = prooflist - 1;
 
-        unpair(t2, prooflist, prooflist); builtin_move(axiomcode, t2);
-        unpair(t2, prooflist, prooflist); builtin_move(param1, t2);
-        unpair(t2, prooflist, prooflist); builtin_move(param2, t2);
-        unpair(t2, prooflist, prooflist); builtin_move(param3, t2);
-        v_0();
+    unpair(t2, prooflist, prooflist); builtin_move(axiomcode, t2);
+    unpair(t2, prooflist, prooflist); builtin_move(param1, t2);
+    unpair(t2, prooflist, prooflist); builtin_move(param2, t2);
+    unpair(t2, prooflist, prooflist); builtin_move(param3, t2);
+    v_0();
 
-        /* DET */
-        cparam(param3); /* minor premise ph */
-        cparam(param2); /* major premise ( ph -> ps ) */ /* par1 = ps */
-        par3(); par1(); wim();
-        if (topwff != param2) {
-            topwff = 0;
-        } else {
-            topwff = param1;
-        }
-        select();
+    /* DET */
+    cparam(param3); /* minor premise ph */
+    cparam(param2); /* major premise ( ph -> ps ) */ /* par1 = ps */
+    par3(); par1(); wim();
+    if (topwff != param2) {
+        topwff = 0;
+    } else {
+        topwff = param1;
+    }
+    select();
 
-        /* GEN */
-        cparam(param3); /* ph */
-        par1(); par3(); wal(); select();
+    /* GEN */
+    cparam(param3); /* ph */
+    par1(); par3(); wal(); select();
 
-        /* B1 */
-        par1(); par2(); wim(); par2(); par3(); wim(); par1(); par3(); wim(); wim(); wim(); select();
+    /* B1 */
+    par1(); par2(); wim(); par2(); par3(); wim(); par1(); par3(); wim(); wim(); wim(); select();
 
-        /* B2 */
-        par1(); wn(); par1(); wim(); par1(); wim(); select();
+    /* B2 */
+    par1(); wn(); par1(); wim(); par1(); wim(); select();
 
-        /* B3 */
-        par1(); par1(); wn(); par2(); wim(); wim(); select();
+    /* B3 */
+    par1(); par1(); wn(); par2(); wim(); wim(); select();
 
-        /* B4 */
-        par1(); par2(); par3(); wim(); wal(); par1(); par2(); wal(); par1(); par3(); wal(); wim(); wim(); select();
+    /* B4 */
+    par1(); par2(); par3(); wim(); wal(); par1(); par2(); wal(); par1(); par3(); wal(); wim(); wim(); select();
 
-        /* B6a */
-        par1(); par2(); weq();  par3(); par1(); par2(); weq(); wal();  wim();
-        par1(); par2(); wel();  par3(); par1(); par2(); wel(); wal();  wim(); wa();
-        if (param1 == param3 || param3 == param2) {
-            topwff = 0;
-        }
-        select();
+    /* B6a */
+    par1(); par2(); weq();  par3(); par1(); par2(); weq(); wal();  wim();
+    par1(); par2(); wel();  par3(); par1(); par2(); wel(); wal();  wim(); wa();
+    if (param1 == param3 || param3 == param2) {
+        topwff = 0;
+    }
+    select();
 
-        /* B6b */
-        par1(); par2(); par3(); wal(); wal();  par2(); par1(); par3(); wal(); wal();  wim();  select();
+    /* B6b */
+    par1(); par2(); par3(); wal(); wal();  par2(); par1(); par3(); wal(); wal();  wim();  select();
 
-        /* B6c */
-        par1(); par1(); par2(); wal(); wex();  par2();  wim();  select();
+    /* B6c */
+    par1(); par1(); par2(); wal(); wex();  par2();  wim();  select();
 
-        /* B7 */
-        par1(); par1(); par2(); weq(); wex(); select();
+    /* B7 */
+    par1(); par1(); par2(); weq(); wex(); select();
 
-        /* B8a */
-        par1(); par2(); weq();  par1(); par3(); weq();  par2(); par3(); weq(); wim(); wim();  select();
+    /* B8a */
+    par1(); par2(); weq();  par1(); par3(); weq();  par2(); par3(); weq(); wim(); wim();  select();
 
-        /* B8b */
-        par1(); par2(); weq();  par1(); par3(); wel();  par2(); par3(); wel(); wim(); wim();  select();
+    /* B8b */
+    par1(); par2(); weq();  par1(); par3(); wel();  par2(); par3(); wel(); wim(); wim();  select();
 
-        /* B8c */
-        par1(); par2(); weq();  par3(); par1(); wel();  par3(); par2(); wel(); wim(); wim();  select();
+    /* B8c */
+    par1(); par2(); weq();  par3(); par1(); wel();  par3(); par2(); wel(); wim(); wim();  select();
 
-        /* EXT */
-        v_2();
-        v_2(); v_0(); wel();  v_2(); v_1(); wel(); wim();
-        v_2(); v_1(); wel();  v_2(); v_0(); wel(); wim(); wa();
-        wal();  v_0(); v_1(); weq(); wim();  select();
+    /* EXT */
+    v_2();
+    v_2(); v_0(); wel();  v_2(); v_1(); wel(); wim();
+    v_2(); v_1(); wel();  v_2(); v_0(); wel(); wim(); wa();
+    wal();  v_0(); v_1(); weq(); wim();  select();
 
-        /* REP */
-        v_3(); v_1(); v_2();  v_1(); par1(); wal(); v_2(); v_1(); weq(); wim();  wal(); wex(); wal();
-        v_1(); v_2();
-        v_2(); v_1(); wel();  v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  wim();
-        v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  v_2(); v_1(); wel();  wim(); wa();
-        wal(); wex();
-        wim(); select();
+    /* REP */
+    v_3(); v_1(); v_2();  v_1(); par1(); wal(); v_2(); v_1(); weq(); wim();  wal(); wex(); wal();
+    v_1(); v_2();
+    v_2(); v_1(); wel();  v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  wim();
+    v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  v_2(); v_1(); wel();  wim(); wa();
+    wal(); wex();
+    wim(); select();
 
-        /* POW */
-        v_1(); v_2();  v_3(); v_3(); v_2(); wel(); v_3(); v_0(); wel(); wim(); wal();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
+    /* POW */
+    v_1(); v_2();  v_3(); v_3(); v_2(); wel(); v_3(); v_0(); wel(); wim(); wal();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
 
-        /* UNI */
-        v_1(); v_2();  v_3(); v_2(); v_3(); wel(); v_3(); v_0(); wel(); wa(); wex();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
+    /* UNI */
+    v_1(); v_2();  v_3(); v_2(); v_3(); wel(); v_3(); v_0(); wel(); wa(); wex();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
 
-        /* INF */
-        v_1(); v_0(); v_1(); wel();  v_0(); v_0(); v_1(); wel();  v_2(); v_2(); v_1(); wel();
-        v_1();   v_1(); v_2(); wel();  v_1(); v_0(); weq(); wim();
-        v_1(); v_0(); weq();  v_1(); v_2(); wel();  wim(); wa(); wal();
-        wa(); wex();  wim(); wal();  wa(); wex(); select();
+    /* INF */
+    v_1(); v_0(); v_1(); wel();  v_0(); v_0(); v_1(); wel();  v_2(); v_2(); v_1(); wel();
+    v_1();   v_1(); v_2(); wel();  v_1(); v_0(); weq(); wim();
+    v_1(); v_0(); weq();  v_1(); v_2(); wel();  wim(); wa(); wal();
+    wa(); wex();  wim(); wal();  wa(); wex(); select();
 
-        if (topwff == 1) {
-            /* vacuously false wff proved, we're done */
-            return;
-        }
+    if (topwff == 1) {
+        /* vacuously false wff proved, we're done */
+        return;
     }
 }
