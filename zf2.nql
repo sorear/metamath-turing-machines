@@ -23,12 +23,10 @@ Tar65: Tarski, Alfred, "A Simplified Formalization of Predicate Logic with
 Identity," Archiv für Mathematische Logik und Grundlagenforschung, 7:61-79
 (1965)
 
-    DET | GIVEN ( ph -> ps )
-        | GIVEN ph
-        | ps
-
-    GEN | GIVEN ph
-        | A. x ph
+    DET ph
+            where ( ph -> ps ) and ps are previously proved
+    GEN A. x ph
+            where ph is previously proved
 
     B1  ( ( ph -> ps ) -> ( ( ps -> ch ) -> ( ph -> ch ) ) )
     B2  ( ( -. ph -> ph ) -> ph )
@@ -162,18 +160,22 @@ Our final axiom set is:
 Define (X . Y) as X + (X + Y) * (X + Y + 1) / 2.  This is the Cantor pairing
 function; it takes nonnegative integer values and is bijective, in particular
 (X . Y) = 0 iff X = Y = 0, and Y < (X . Y) if (X . Y) != 0.  Extend the
-notation to (X Y Z . W) = (X . (Y . (Z . W))) and (X Y) = (X . (Y . 0)).
+notation as follows:
+
+    (X Y Z) = (X . (Y Z))
+    (Z)     = (Z . 0)
+    (X; Y)  = (X . (; Y)) = (X . 1 + (Y . 0))
 
 There are a countable infinity of set variables, numbered in the most direct
 way.
 
 Wffs are numbered recursively using the pairing function:
 
-    | v_i = v_j  |      ( 0 i . j )
-    | v_i e. v_j |      ( 1 i . j )
-    | ph -> ps   |      ( 2 |ph| . |ps| )
-    | -. ph      |      ( 3 |ph| . |ph| )
-    | A. v_i ph  |      ( 4 i . |ph| )
+    | v_i = v_j  |      ( ( i . j ) . 0 )
+    | v_i e. v_j |      ( ( i . j ) . 1 )
+    | ph -> ps   |      ( ( |ph| . |ps| ) . 2 )
+    | -. ph      |      ( |ph| . 3 )
+    | A. v_i ph  |      ( ( i . |ph| ) . 4 )
 
 No checking is done to verify that a wff has one of these forms before creating
 a substitution instance of an axiom, so other forms will exist during
@@ -186,7 +188,7 @@ sets contain themselves.  It serves as the canonical contradiction; the search
 stops when a proof of 1 is found.
 
 A proof is a list of integers taken in repeating groups of 4, each an axiom
-code followed by three parameters, such as (ACa P1a P2A P3a ACb P1b P2b P3b
+code followed by three parameters, such as (ACa P1a P2A P3a; ACb P1b P2b P3b;
 ...).  A proof manipulates a stack of proved theorems.  A step in the proof
 corresponding to an inference rule pops one or two theorems from the stack;
 every step pushes a new theorem.  Invalid steps push the moot theorem |v_0 =
@@ -224,10 +226,12 @@ Axiom codes are assigned as follows.  -- means ignored.
 
 # Use of variables
 
-The outermost loop runs over all sequences of proof steps, encoded by
-nextproof.  Each sequence is temporarily in prooflist; the next outermost loop
-breaks down prooflist one step at a time, with the parts of the step in
-axiomcode, param1, param2, and param3.
+The main loop runs over all sequences of proof steps, encoded by nextproof.
+Each sequence is temporarily in prooflist; the next outermost loop breaks down
+prooflist one step at a time, with the parts of the step in axiomcode, param1,
+param2, and param3.  prooflist is reset when it reaches zero, which happens
+infinitely often because prooflist is reduced by at least 1 in every iteration
+where it is not reset.
 
 (topwff . wffstack) represents a single list, the wff-stack.  Between
 iterations of the step loop, the wff stack corresponds to the stack of
@@ -273,158 +277,158 @@ global param1;
 global param2;
 global param3;
 
-/* t0 clobbered by pairing */
-global t0;
 global t2;
 
 /* Cantor pair manipulation proctions */
+/* zeros in1, in2 */
 proc pair(out, in1, in2) {
-    t0 = in1 + in2;
-    out = in1 + ((t0 + 1) * t0) / 2;
+    builtin_pair(out, in1, in2);
 }
 
-/* clobbers in */
+/* zeros in */
 proc unpair(out1, out2, in) {
-    t0 = 0;
-    /* t1 = in; */ /* invariant: in = in[begin] - t0 * (t0 + 1) / 2 */
-    while (in > t0) {
-        t0 = t0 + 1;
-        in = in - t0;
-    }
-    out1 = in;
-    out2 = t0 - in;
+    builtin_unpair(out1, out2, in);
 }
 
 proc pushwff() { pair(wffstack, topwff, wffstack); }
 proc popwff() { unpair(topwff, wffstack, wffstack); }
-proc v_0() { pushwff(); topwff = 0; }
-proc v_1() { pushwff(); topwff = 1; }
-proc v_2() { pushwff(); topwff = 2; }
-proc v_3() { pushwff(); topwff = 3; }
+proc v_0_() { pushwff(); topwff = topwff + 0; }
+proc v_1_() { pushwff(); topwff = topwff + 1; }
+proc v_2_() { pushwff(); topwff = topwff + 2; }
+proc v_3_() { pushwff(); topwff = topwff + 3; }
+proc v_4_() { pushwff(); topwff = topwff + 4; }
 
-proc par1() { pushwff(); topwff = param1; }
-proc par2() { pushwff(); topwff = param2; }
-proc par3() { pushwff(); topwff = param3; }
-
-proc weq() { t2 = topwff; popwff(); pair(t2, topwff, t2); topwff = 0; pair(topwff, topwff, t2); }
-proc wel() { t2 = topwff; popwff(); pair(t2, topwff, t2); topwff = 1; pair(topwff, topwff, t2); }
-proc wim() { t2 = topwff; popwff(); pair(t2, topwff, t2); topwff = 2; pair(topwff, topwff, t2); }
-proc wn()  { t2 = topwff;           pair(t2, topwff, t2); topwff = 3; pair(topwff, topwff, t2); }
-proc wal() { t2 = topwff; popwff(); pair(t2, topwff, t2); topwff = 4; pair(topwff, topwff, t2); }
+proc cons() { unpair(t2, wffstack, wffstack); pair(topwff, t2, topwff); }
+proc weq() { cons(); v_0_(); cons(); }
+proc wel() { cons(); v_1_(); cons(); }
+proc wim() { cons(); v_2_(); cons(); }
+proc wn()  { v_3_(); cons(); }
+proc wal() { cons(); v_4_(); cons(); }
 
 proc wex() { wn(); wal(); wn(); }
 proc wa() { wn(); wim(); wn(); }
 
+proc v_0() { v_0_(); noop_7(); }
+proc v_1() { v_1_(); noop_7(); }
+proc v_2() { v_2_(); noop_7(); }
+proc v_3() { v_3_(); noop_7(); }
+
+proc par1() { pushwff(); topwff = param1; noop_7(); }
+proc par2() { pushwff(); topwff = param2; noop_7(); }
+proc par3() { pushwff(); topwff = param3; noop_7(); }
+
 proc select() {
-    t2 = topwff; popwff();
+    builtin_move(t2, topwff); popwff();
     if (axiomcode > 0) {
         axiomcode = axiomcode - 1;
-        topwff = t2;
+        builtin_move(topwff, t2);
     }
 }
 
 proc cparam(p) {
     if (axiomcode == 1) {
-        unpair(p, wffstack, wffstack);
+        unpair(t2, wffstack, wffstack);
+        builtin_move(p, t2);
     }
 }
 
 
 proc main() {
     while (true) {
-        prooflist = nextproof;
-        nextproof = nextproof + 1;
+        if (prooflist == 0) {
+            prooflist = nextproof;
+            nextproof = nextproof + 1;
+        }
+        prooflist = prooflist - 1;
 
-        while (prooflist > 0) {
-            v_0();
-            unpair(axiomcode, prooflist, prooflist);
-            unpair(param1, prooflist, prooflist);
-            unpair(param2, prooflist, prooflist);
-            unpair(param3, prooflist, prooflist);
+        unpair(t2, prooflist, prooflist); builtin_move(axiomcode, t2);
+        unpair(t2, prooflist, prooflist); builtin_move(param1, t2);
+        unpair(t2, prooflist, prooflist); builtin_move(param2, t2);
+        unpair(t2, prooflist, prooflist); builtin_move(param3, t2);
+        v_0();
 
-            /* DET */
-            cparam(param3); /* minor premise ph */
-            cparam(param2); /* major premise ( ph -> ps ) */ /* par1 = ps */
-            par3(); par1(); wim();
-            if (topwff != param2) {
-                topwff = 0;
-            } else {
-                topwff = param1;
-            }
-            select();
+        /* DET */
+        cparam(param3); /* minor premise ph */
+        cparam(param2); /* major premise ( ph -> ps ) */ /* par1 = ps */
+        par3(); par1(); wim();
+        if (topwff != param2) {
+            topwff = 0;
+        } else {
+            topwff = param1;
+        }
+        select();
 
-            /* GEN */
-            cparam(param3); /* ph */
-            par1(); par3(); wal(); select();
+        /* GEN */
+        cparam(param3); /* ph */
+        par1(); par3(); wal(); select();
 
-            /* B1 */
-            par1(); par2(); wim(); par2(); par3(); wim(); par1(); par3(); wim(); wim(); wim(); select();
+        /* B1 */
+        par1(); par2(); wim(); par2(); par3(); wim(); par1(); par3(); wim(); wim(); wim(); select();
 
-            /* B2 */
-            par1(); wn(); par1(); wim(); par1(); wim(); select();
+        /* B2 */
+        par1(); wn(); par1(); wim(); par1(); wim(); select();
 
-            /* B3 */
-            par1(); par1(); wn(); par2(); wim(); wim(); select();
+        /* B3 */
+        par1(); par1(); wn(); par2(); wim(); wim(); select();
 
-            /* B4 */
-            par1(); par2(); par3(); wim(); wal(); par1(); par2(); wal(); par1(); par3(); wal(); wim(); wim(); select();
+        /* B4 */
+        par1(); par2(); par3(); wim(); wal(); par1(); par2(); wal(); par1(); par3(); wal(); wim(); wim(); select();
 
-            /* B6a */
-            par1(); par2(); weq();  par3(); par1(); par2(); weq(); wal();  wim();
-            par1(); par2(); wel();  par3(); par1(); par2(); wel(); wal();  wim(); wa();
-            if (param1 == param3 || param3 == param2) {
-                topwff = 0;
-            }
-            select();
+        /* B6a */
+        par1(); par2(); weq();  par3(); par1(); par2(); weq(); wal();  wim();
+        par1(); par2(); wel();  par3(); par1(); par2(); wel(); wal();  wim(); wa();
+        if (param1 == param3 || param3 == param2) {
+            topwff = 0;
+        }
+        select();
 
-            /* B6b */
-            par1(); par2(); par3(); wal(); wal();  par2(); par1(); par3(); wal(); wal();  wim();  select();
+        /* B6b */
+        par1(); par2(); par3(); wal(); wal();  par2(); par1(); par3(); wal(); wal();  wim();  select();
 
-            /* B6c */
-            par1(); par1(); par2(); wal(); wex();  par2();  wim();  select();
+        /* B6c */
+        par1(); par1(); par2(); wal(); wex();  par2();  wim();  select();
 
-            /* B7 */
-            par1(); par1(); par2(); weq(); wex(); select();
+        /* B7 */
+        par1(); par1(); par2(); weq(); wex(); select();
 
-            /* B8a */
-            par1(); par2(); weq();  par1(); par3(); weq();  par2(); par3(); weq(); wim(); wim();  select();
+        /* B8a */
+        par1(); par2(); weq();  par1(); par3(); weq();  par2(); par3(); weq(); wim(); wim();  select();
 
-            /* B8b */
-            par1(); par2(); weq();  par1(); par3(); wel();  par2(); par3(); wel(); wim(); wim();  select();
+        /* B8b */
+        par1(); par2(); weq();  par1(); par3(); wel();  par2(); par3(); wel(); wim(); wim();  select();
 
-            /* B8c */
-            par1(); par2(); weq();  par3(); par1(); wel();  par3(); par2(); wel(); wim(); wim();  select();
+        /* B8c */
+        par1(); par2(); weq();  par3(); par1(); wel();  par3(); par2(); wel(); wim(); wim();  select();
 
-            /* EXT */
-            v_2();
-            v_2(); v_0(); wel();  v_2(); v_1(); wel(); wim();
-            v_2(); v_1(); wel();  v_2(); v_0(); wel(); wim(); wa();
-            wal();  v_0(); v_1(); weq(); wim();  select();
+        /* EXT */
+        v_2();
+        v_2(); v_0(); wel();  v_2(); v_1(); wel(); wim();
+        v_2(); v_1(); wel();  v_2(); v_0(); wel(); wim(); wa();
+        wal();  v_0(); v_1(); weq(); wim();  select();
 
-            /* REP */
-            v_3(); v_1(); v_2();  v_1(); par1(); wal(); v_2(); v_1(); weq(); wim();  wal(); wex(); wal();
-            v_1(); v_2();
-            v_2(); v_1(); wel();  v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  wim();
-            v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  v_2(); v_1(); wel();  wim(); wa();
-            wal(); wex();
-            wim(); select();
+        /* REP */
+        v_3(); v_1(); v_2();  v_1(); par1(); wal(); v_2(); v_1(); weq(); wim();  wal(); wex(); wal();
+        v_1(); v_2();
+        v_2(); v_1(); wel();  v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  wim();
+        v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  v_2(); v_1(); wel();  wim(); wa();
+        wal(); wex();
+        wim(); select();
 
-            /* POW */
-            v_1(); v_2();  v_3(); v_3(); v_2(); wel(); v_3(); v_0(); wel(); wim(); wal();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
+        /* POW */
+        v_1(); v_2();  v_3(); v_3(); v_2(); wel(); v_3(); v_0(); wel(); wim(); wal();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
 
-            /* UNI */
-            v_1(); v_2();  v_3(); v_2(); v_3(); wel(); v_3(); v_0(); wel(); wa(); wex();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
+        /* UNI */
+        v_1(); v_2();  v_3(); v_2(); v_3(); wel(); v_3(); v_0(); wel(); wa(); wex();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
 
-            /* INF */
-            v_1(); v_0(); v_1(); wel();  v_0(); v_0(); v_1(); wel();  v_2(); v_2(); v_1(); wel();
-            v_1();   v_1(); v_2(); wel();  v_1(); v_0(); weq(); wim();
-            v_1(); v_0(); weq();  v_1(); v_2(); wel();  wim(); wa(); wal();
-            wa(); wex();  wim(); wal();  wa(); wex(); select();
+        /* INF */
+        v_1(); v_0(); v_1(); wel();  v_0(); v_0(); v_1(); wel();  v_2(); v_2(); v_1(); wel();
+        v_1();   v_1(); v_2(); wel();  v_1(); v_0(); weq(); wim();
+        v_1(); v_0(); weq();  v_1(); v_2(); wel();  wim(); wa(); wal();
+        wa(); wex();  wim(); wal();  wa(); wex(); select();
 
-            if (topwff == 1) {
-                /* vacuously false wff proved, we're done */
-                return;
-            }
+        if (topwff == 1) {
+            /* vacuously false wff proved, we're done */
+            return;
         }
     }
 }
