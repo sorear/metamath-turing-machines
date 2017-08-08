@@ -590,8 +590,66 @@ class SubEmitter:
 
     def emit_call(self, func_name, args):
         assert len(self._scratch_used) == 0
-        func = self._machine_builder.instantiate(func_name, tuple(arg.name for arg in args))
-        self._output.append(func)
+        if func_name.startswith('noop_'):
+            self._output.append(self._machine_builder.noop(int(func_name[5:])))
+        elif func_name.startswith('builtin_'):
+            getattr(self, 'emit_' + func_name)(*args)
+        else:
+            func = self._machine_builder.instantiate(func_name, tuple(arg.name for arg in args))
+            self._output.append(func)
+
+    def emit_builtin_pair(self, out, in1, in2):
+        t0 = self.get_temp()
+        extract = self.gensym()
+        nextdiag = self.gensym()
+        done = self.gensym()
+        self.emit_label(extract)
+        self.emit_dec(in1)
+        self.emit_goto(nextdiag)
+        self.emit_inc(t0)
+        self.emit_inc(in2)
+        self.emit_goto(extract)
+        self.emit_label(nextdiag)
+        self.emit_dec(in2)
+        self.emit_goto(done)
+        self.emit_inc(t0)
+        self.emit_transfer(in2, in1)
+        self.emit_goto(extract)
+        self.emit_label(done)
+        self.emit_transfer(out)
+        self.emit_transfer(t0, out)
+        self.put_temp(t0)
+
+    def emit_builtin_unpair(self, out1, out2, in1):
+        t0 = self.get_temp()
+        self.emit_transfer(in1, t0)
+        self.emit_transfer(out1)
+        self.emit_transfer(out2)
+
+        nextdiag = self.gensym()
+        nextstep = self.gensym()
+        done = self.gensym()
+
+        self.emit_label(nextstep)
+        self.emit_dec(t0)
+        self.emit_goto(done)
+        self.emit_inc(out1)
+        self.emit_dec(out2)
+        self.emit_goto(nextdiag)
+        self.emit_goto(nextstep)
+        self.emit_label(nextdiag)
+        self.emit_transfer(out1, out2)
+        self.emit_goto(nextstep)
+        self.emit_label(done)
+
+        self.put_temp(t0)
+
+    def emit_builtin_move(self, to_, from_):
+        t0 = self.get_temp()
+        self.emit_transfer(from_, t0)
+        self.emit_transfer(to_)
+        self.emit_transfer(t0, to_)
+        self.put_temp(t0)
 
     def resolve(self, regname):
         reg = self._register_map.get(regname) or '_G' + regname

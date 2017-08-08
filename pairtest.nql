@@ -1,0 +1,21 @@
+global a;
+global b;
+global c;
+global d;
+global e;
+
+proc unpair(x,y,z) { builtin_unpair(x,y,z); }
+proc pair(x,y,z) { builtin_pair(x,y,z); }
+proc snoop() { e = e - 1; }
+proc main() {
+    while (true) {
+        d = a;
+        unpair(b, c, a);
+        snoop();
+        pair(a, b, c);
+        if (d != a) {
+            return;
+        }
+        a = a + 1;
+    }
+}
