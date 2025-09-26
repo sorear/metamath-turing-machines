@@ -23,8 +23,8 @@ Tar65: Tarski, Alfred, "A Simplified Formalization of Predicate Logic with
 Identity," Archiv für Mathematische Logik und Grundlagenforschung, 7:61-79
 (1965)
 
-    DET ph
-            where ( ph -> ps ) and ps are previously proved
+    DET ps
+            where ( ph -> ps ) and ph are previously proved
     GEN A. x ph
             where ph is previously proved
 
