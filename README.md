@@ -32,8 +32,8 @@ On very small programs it cannot compete with hand-coding, and behavior on much 
 
 # Setup
 
-1. Make sure `python3` is installed.  This code is tested on 3.4.3
-2. Make sure the "pyparsing" package is installed.  For instance: `pip3 install pyparsing`.  You may need to bootstrap pip first.
+1. Make sure `python3` is installed.  This code is tested on 3.4.3 and 3.7.3
+2. Make sure the "pyparsing" package is installed.  For instance: `pip3 install pyparsing`.  You may need to bootstrap pip first.  (Note that the latest version of pyparsing is incompatible with NQL.  2.2.0 works.)
 
 # Running
 

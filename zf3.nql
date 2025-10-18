@@ -1,0 +1,44 @@
+global tree;
+global nexttree;
+global stack;
+
+global t0;
+global t1;
+global t2;
+
+/* Cantor pair manipulation proctions */
+/* zeros in1, in2 */
+proc pair(out, in1, in2) {
+    builtin_pair(out, in1, in2);
+}
+
+/* zeros in */
+proc unpair(out1, out2, in) {
+    builtin_unpair(out1, out2, in);
+}
+
+proc main() {
+    nexttree = nexttree + 1;
+    if (tree == 0) {
+        tree = nexttree;
+    }
+
+    unpair(t0, tree, tree);
+    while (tree > 0) {
+        pair(stack, stack, t0);
+        unpair(t0, tree, tree);
+    }
+
+    t1 = nexttree;
+    while (t1 > 0) {
+        t1 = t1 - 1;
+        t2 = t0;
+        pair(tree, tree, t0);
+        builtin_add(t0, t2);
+    }
+
+    while (stack > 0) {
+        unpair(stack, t0, stack);
+        pair(tree, t0, tree);
+    }
+}

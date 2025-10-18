@@ -1,0 +1,67 @@
+/*
+Based on a program by Patcail
+https://discord.com/channels/206932820206157824/376768078450786304/1276039180710969386
+*/
+global big_num;
+global child;
+global i;
+global j;
+global m_copy;
+global matrix;
+global newEl;
+global order;
+global rows;
+global t2;
+global threshold;
+proc extract(to, from){
+    to = 0;
+    t2 = from - ((from / 2) * 2);
+    while(t2 == 1){
+        to = to + 1;
+        from = from / 2;
+        t2 = from - ((from / 2) * 2);
+    }
+}
+proc main(){
+    if(rows == 0){
+        rows = 2;
+        /* 0b11011011 */
+        matrix = 219;
+        order = 1;
+    }
+    if(order == 0){
+        order = rows;
+    }
+    order = order - 1;
+    threshold = order;
+    m_copy = matrix;
+    extract(newEl, matrix);
+    child = newEl;
+    i = 0;
+    while(i < child){
+        m_copy = matrix;
+        j = 0;
+        while(j < child){
+            extract(newEl, m_copy);
+            m_copy = m_copy / 2;
+            j = j + 1;
+        }
+        extract(newEl, m_copy);
+        if(newEl > threshold){
+            newEl = newEl + child;
+        }
+        threshold = threshold + 1;
+        j = 0;
+        while(j < newEl){
+            matrix = matrix * 2;
+            matrix = matrix + 1;
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    matrix = matrix / 2;
+    big_num = big_num + 1;
+    if(matrix == 0){
+        return;
+    }
+}

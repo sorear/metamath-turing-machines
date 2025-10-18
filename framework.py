@@ -88,9 +88,11 @@ def memo(func):
 
 Label = namedtuple('Label', ['name'])
 Label.size = 0
+Label.alignment = 1
 Label.is_decrement = False
 Goto = namedtuple('Goto', ['name'])
 Goto.size = 1
+Goto.alignment = 1
 Goto.is_decrement = False
 Register = namedtuple('Register', 'name index inc dec')
 
@@ -106,8 +108,14 @@ class Subroutine:
         self.name = name
         self.order = order
         self.size = 1 << order
+        self.alignment = self.size
         self.is_decrement = is_decrement
         self.child_map = child_map or {}
+
+class Align:
+    def __init__(self, align):
+        self.size = 0
+        self.alignment = align
 
 InsnInfo = namedtuple('InsnInfo', 'sub labels goto')
 
@@ -323,7 +331,7 @@ class MachineBuilder:
         On entry, the head should be order bits left of the rightmost bit of the program
         counter; if carry_bit is set, the bit the head is on will be incremented."""
         if order == self.pc_bits:
-            return State(move=+1, next=self.dispatchroot(), name='!ENTRY')
+            return State(move=+1, next=self.dispatchroot(), name='0')
         assert order < self.pc_bits
         if carry_bit:
             return State(write0='1', next0=self.dispatch_order(order + 1, 0),
@@ -413,10 +421,13 @@ class MachineBuilder:
                 goto_map[offset] = part.name
 
             # parts must be aligned
-            while offset % part.size:
+            while offset % part.alignment:
                 noop_order = (offset & -offset).bit_length() - 1
                 offset += 1 << noop_order
                 real_parts.append(self.noop(noop_order))
+
+            if isinstance(part, Align):
+                continue
 
             real_parts.append(part)
             offset += part.size
@@ -427,6 +438,7 @@ class MachineBuilder:
         while offset > (1 << order):
             order += 1
 
+        # if name == 'main()':
         while offset < (1 << order):
             noop_order = (offset & -offset).bit_length() - 1
             offset += 1 << noop_order
@@ -583,6 +595,28 @@ class Machine:
         """Dump the subroutines used by this machine."""
 
         stack = [self.main]
+        utilizations = {}
+        while stack:
+            subp = stack[-1]
+            if subp in utilizations:
+                stack.pop()
+                continue
+            explored = True
+            for offset, entry in subp.child_map.items():
+                if entry.sub not in utilizations:
+                    explored = False
+                    stack.append(entry.sub)
+            if explored:
+                stack.pop()
+                utilization = 0
+                if len(subp.child_map.items()) == 0 and not subp.name.startswith("noop"):
+                    utilization = 1
+                for offset, entry in subp.child_map.items():
+                    # print(utilizations[entry.sub])
+                    utilization += utilizations[entry.sub]
+                utilizations[subp] = utilization
+
+        stack = [self.main]
         seen = set()
         while stack:
             subp = stack.pop()
@@ -590,7 +624,8 @@ class Machine:
                 continue
             seen.add(subp)
             print()
-            print('NAME:', subp.name, 'ORDER:', subp.order)
+            print(subp.name)
+            print('NAME:', subp.name, 'ORDER:', subp.order, 'EFFICIENCY:', utilizations[subp] , '/', 1 << subp.order)
             for offset, entry in sorted(subp.child_map.items()):
                 while len(offset) < subp.order:
                     offset = offset + ' '
@@ -635,11 +670,13 @@ class Machine:
             index[state.name] = index.get(state.name, 0) + 1
             renumber[state] = state.name + '(#' + str(index[state.name]) + ')'
 
-        dirmap = {1: 'R', -1: 'L'}
+        dirmap = {1: 'r', -1: 'l'}
         for state in sorted(self.reachable(), key=lambda x: x.name):
             print(renumber.get(state, state.name), '=',
                   state.write0, dirmap[state.move0], renumber.get(state.next0, state.next0.name),
                   state.write1, dirmap[state.move1], renumber.get(state.next1, state.next1.name))
+            # print(renumber.get(state, state.name), 1, state.write1, dirmap[state.move1], renumber.get(state.next1, state.next1.name))
+            # print(renumber.get(state, state.name), "*", state.write0, dirmap[state.move0], renumber.get(state.next0, state.next0.name))
 
     def tm_print(self):
         """Prints the current state of the Turing machine execution."""

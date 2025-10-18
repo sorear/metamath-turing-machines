@@ -1,7 +1,7 @@
 """Implements an EDSL for constructing Turing machines without subclassing
 MachineBuilder."""
 
-from framework import Machine, MachineBuilder, Goto, Label, memo
+from framework import Machine, MachineBuilder, Goto, Label, Align, memo
 
 class Node:
     """Base class for all Not Quite Laconic syntax nodes."""
@@ -19,6 +19,8 @@ class Node:
         if isinstance(self.child_types, tuple):
             assert len(self.children) == len(self.child_types)
             for child, ctype in zip(self.children, self.child_types):
+                if not isinstance(child, ctype):
+                    print(child, ctype)
                 assert isinstance(child, ctype)
         else:
             for child in self.children:
@@ -104,6 +106,15 @@ class NatExpr(Node):
     def is_additive(self):
         """Returns True if emit_nat actually just adds and is safe for non-zero targets."""
         return False
+    
+    def used_regs(self):
+        """Returns the set of registers that are (explicitly) used in this expression."""
+        regs = set()
+        for child in self.children:
+            if child.used_regs() is None:
+                print(child, child.used_regs())
+            regs |= child.used_regs()
+        return regs
 
 class Reg(NatExpr):
     def __init__(self, **kwargs):
@@ -119,6 +130,9 @@ class Reg(NatExpr):
         state.emit_transfer(reg, target, save)
         state.emit_transfer(save, reg)
         state.put_temp(save)
+
+    def used_regs(self):
+        return set(self.name)
 
 class Mul(NatExpr):
     child_types = (NatExpr, NatExpr)
@@ -347,6 +361,20 @@ class Not(BoolExpr):
 
     def emit_test(self, state, label, invert):
         self.children[0].emit_test(state, label, not invert)
+    
+class DecZ(BoolExpr):
+    """Decrement the argument register and jump if it was zero."""
+
+    child_types = (Reg,)
+
+    def emit_test(self, state, target, invert):
+        arg = self.children[0]
+        no_jump = state.gensym()
+        state.emit_dec(state.resolve(arg.name))
+        if invert:
+            state.emit_goto(no_jump)
+        state.emit_goto(target)
+        state.emit_label(no_jump)
 
 class And(BoolExpr):
     child_types = (BoolExpr,BoolExpr)
@@ -385,8 +413,6 @@ class VoidExpr(Node):
 
 class Assign(VoidExpr):
     child_types = (Reg, NatExpr)
-    # TODO: augmented additions and subtractions can be peepholed to remove the temporary
-    # TODO: when assigning something that doesn't use the old value, it can be constructed in place
 
     def emit_aug_op(self, state, lhs, rhs):
         if not (isinstance(rhs, Add) or isinstance(rhs, Monus)):
@@ -396,15 +422,20 @@ class Assign(VoidExpr):
         rhs_l, rhs_r = rhs.children
         if not (isinstance(rhs_l, Reg) and rhs_l.name == lhs.name):
             return
-        if not isinstance(rhs_r, Lit):
-            return
-        for _ in range(rhs_r.value):
-            if isinstance(rhs, Monus):
-                state.emit_dec(state.resolve(lhs.name))
-                state.emit_noop()
-            else:
-                state.emit_inc(state.resolve(lhs.name))
-        return True
+        if isinstance(rhs_r, Lit):
+            for _ in range(rhs_r.value):
+                if isinstance(rhs, Monus):
+                    state.emit_dec(state.resolve(lhs.name))
+                    state.emit_noop()
+                else:
+                    state.emit_inc(state.resolve(lhs.name))
+            return True
+        elif isinstance(rhs, Add):
+            temp = state.get_temp()
+            rhs_r.emit_nat(state, temp)
+            state.emit_transfer(temp, state.resolve(lhs.name))
+            state.put_temp(temp)
+            return True
 
     def emit_stmt(self, state):
         lhs, rhs = self.children
@@ -413,6 +444,8 @@ class Assign(VoidExpr):
             rhs.emit_nat(state, state.resolve(lhs.name))
         elif self.emit_aug_op(state, lhs, rhs):
             pass
+        elif lhs.name not in rhs.used_regs():
+            rhs.emit_nat(state, state.resolve(lhs.name))
         else:
             temp = state.get_temp()
             rhs.emit_nat(state, temp)
@@ -558,23 +591,29 @@ class SubEmitter:
         self._return_label = None
         self.break_label = None
         self.name = name
+        self.blank = True
 
     def emit_transfer(self, *regs):
+        self.blank = False
         self._output.append(self._machine_builder.transfer(*regs))
 
     def emit_halt(self):
+        self.blank = False
         self._output.append(self._machine_builder.halt())
 
     def emit_noop(self):
+        self.blank = False
         self._output.append(self._machine_builder.noop(0))
 
     def emit_label(self, label):
         self._output.append(Label(label))
 
     def emit_goto(self, label):
+        self.blank = False
         self._output.append(Goto(label))
 
     def emit_return(self):
+        self.blank = False
         if self.name == 'main':
             self.emit_halt()
             return
@@ -587,23 +626,38 @@ class SubEmitter:
             self.emit_label(self._return_label)
 
     def emit_inc(self, reg):
+        self.blank = False
         self._output.append(reg.inc)
 
     def emit_dec(self, reg):
+        self.blank = False
         self._output.append(reg.dec)
 
     def emit_call(self, func_name, args):
         assert len(self._scratch_used) == 0
         if func_name.startswith('noop_'):
+            pass
             self._output.append(self._machine_builder.noop(int(func_name[5:])))
+        elif func_name.startswith('align_'):
+            pass
+            self._output.append(Align(1 << int(func_name[6:])))
         elif func_name.startswith('builtin_'):
             getattr(self, 'emit_' + func_name)(*args)
+        elif False:
+        # elif self.blank:
+        # elif func_name in {"wex", "wa"}:
+        # elif True:
+            self._machine_builder._ast.by_name[func_name].children[0].emit_stmt(self)
         else:
             func = self._machine_builder.instantiate(func_name, tuple(arg.name for arg in args))
+            self.blank = False
             self._output.append(func)
 
     def emit_builtin_pair(self, out, in1, in2):
-        t0 = self.get_temp()
+        if out in {in1, in2}:
+            t0 = self.get_temp()
+        else:
+            t0 = out
         extract = self.gensym()
         nextdiag = self.gensym()
         done = self.gensym()
@@ -620,13 +674,17 @@ class SubEmitter:
         self.emit_transfer(in2, in1)
         self.emit_goto(extract)
         self.emit_label(done)
-        self.emit_transfer(out)
-        self.emit_transfer(t0, out)
-        self.put_temp(t0)
+        if out in {in1, in2}:
+            self.emit_transfer(out)
+            self.emit_transfer(t0, out)
+            self.put_temp(t0)
 
     def emit_builtin_unpair(self, out1, out2, in1):
-        t0 = self.get_temp()
-        self.emit_transfer(in1, t0)
+        if in1 in {out1, out2}:
+            t0 = self.get_temp()
+            self.emit_transfer(in1, t0)
+        else:
+            t0 = in1
         self.emit_transfer(out1)
         self.emit_transfer(out2)
 
@@ -646,14 +704,23 @@ class SubEmitter:
         self.emit_goto(nextstep)
         self.emit_label(done)
 
-        self.put_temp(t0)
+        if in1 in {out1, out2}:
+            self.put_temp(t0)
 
     def emit_builtin_move(self, to_, from_):
-        t0 = self.get_temp()
-        self.emit_transfer(from_, t0)
-        self.emit_transfer(to_)
-        self.emit_transfer(t0, to_)
-        self.put_temp(t0)
+        if to_ != from_:
+            self.emit_transfer(to_)
+            self.emit_transfer(from_, to_)
+
+    def emit_builtin_add(self, to_, from_):
+        if to_ != from_:
+            self.emit_transfer(from_, to_)
+        else:
+            t0 = self.get_temp()
+            self.emit_transfer(to_)
+            self.emit_transfer(from_, t0, to_)
+            self.emit_transfer(t0, to_)
+            self.put_temp(t0)
 
     def resolve(self, regname):
         reg = self._register_map.get(regname) or '_G' + regname

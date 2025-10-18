@@ -1,5 +1,7 @@
 /*
 
+(A bunch of stuff in this comment is inaccurate)
+
 # Premise
 
 This is a specification of a Turing machine which searches for
@@ -73,12 +75,10 @@ This recursive scheme is used in the Metamath system to handle cases where x is
 free in ph but not syntactically absent.  Here we use it merely to avoid the
 complexity of syntactic absence.  We do not need an axiom for B6(III) as it can
 be proven from B6(IV), B4, and propositional logic; likewise shorter axioms can
-be found which prove IV and V over the remainder of the system.
-Thus we replace B6 with:
+be found which prove IV and V over the remainder of the system.  I and II are
+combined to share their conditional clause.  Thus we replace B6 with:
 
-    B6a1 ( x = y -> A. z x = y )
-            where x != z, y != z
-    B6a2 ( x e. y -> A. z x e. y )
+    B6a ( x = y -> A. z x = y /\ x e. y -> A. z x e. y )
             where x != z, y != z
     B6b ( A. x A. y ph -> A. y A. x ph )
     B6c ( E. x A. x ph -> ph )
@@ -101,67 +101,31 @@ that proof; B8a below suffices for Lemma 3 of KM65.  B8 becomes:
 
 # Set theory
 
-The axiom system we use is significantly different from other formulations
-of set theory, since minimizing the length of the axioms reduces the number of
-states.
+The ZF axioms of extensionality, replacement, power set, and union are taken
+from the Metamath system (ax-ext, ax-rep, ax-pw, ax-un), except that where the
+Metamath axioms are schemes over an arbitrary choice of logical variables, we
+require use of v_0 through v_3 to avoid requiring distinct variable conditions
+on any axiom besides B6a and to prevent requiring more than 3 parameters to
+any primitive scheme.
 
-We omit Regularity, Choice, and Extensionality, since they do not affect the
-consistency strength of the system.
+Replacement is still a scheme over a formula variable ph, which is protected as
+"A. v_1 ph" to avoid false-capture issues.  Replacement is expressed sharply
+with a biconditional such that there are no extraneous sets in the replacement
+result, thus a distinct separation axiom is not needed; power set and union
+take advantage of this by allowing extraneous sets, the true union or power set
+can be proved to exist via separation.
 
-Unlike the predicate calculus axioms, we use fixed variables for the axioms of
-set theory, since instances with other variables are derivable.
+Regularity and Choice are omitted as they do not affect the consistency
+strength of the system.
 
-Alongside the schemes of predicate calculus and the axioms of Powerset and
-Union, we include only one additional scheme, which implies the traditional
-schemes of Separation and Collection (which, unlike Replacement, is usable
-even without Extensionality), as well as the Axiom of Infinity.
-
-This new scheme, after a few simplifications, and renaming some instances of x
-to w to avoid shadowing, is:
-
-E. y (
-    A. z e. w ( E. x P -> z e. y )
-    /\ A. z e. y E. x P
-    /\ A. x e. y A. z ( P -> E. z e. y P ) )
-
-P is intended to express a relation from x to z. The second conjunct asserts
-that every element of y is in the image of P. The first conjunct asserts that
-every element of w which is in the image of P is also in v_1.
-Separation can be derived using P = (Q /\ x e. w), where Q is a predicate
-on x.
-
-The third conjunct asserts something similar to the conclusion of Collection,
-but with the source and target sets being identical. Instantiating P with
-((x = v /\ z e. w) \/ (x e. w /\ Q)), where x is the source set of an instance
-of Collection and Q is the relation to collect, and setting v to a set not in
-z, z is a subset of any value for y satisfying the above scheme by the first
-disjunct of P, and thus by the second disjunct y is a witness to that instance
-of Collection.
-
-Since the third conjunct of the above scheme uses the output set as an input to
-collection, simple recursive definitions that would normally be produced using
-Infinity and Replacement can instead be constructed more directly.
-For example, the set of iterated unions of a set X can be constructed by
-setting P to ((x = v /\ z = X) \/ (x e. z /\ y = U. v_0)), where v is as in
-the previous paragraph and U. denotes the union of elements of a set. Infinity
-itself can be proved similarly.
-
-The constructible universe satisfies Foundation, Choice, and Extensionality
-regardless of whether or not the full universe does (for the latter, only if
-the ambient equality is omitted from the language used to generate definable
-powersets). The construction of the constructible universe can be carried out
-normally (for the most part), since most of the structures involved have
-bounded depth, so they can be compared using sufficiently hereditarily
-extensional replacements for equality, to avoid issues with non-extensional
-differences between sets permitted by the lack of Extensionality. The two
-exceptions are the levels of the constructible hierarchy themselves, which are
-extensional enough that they can be compared with ordinary extensional equality
-(that is, (A. x e. X x e. Y /\ A. x e. Y x e. X)), and von Neumann ordinals,
-which can instead be compared using order-equivalence.
-
-The above constructions shows that the theory used by this machine interprets
-ZFC. Thus, since it can easily be interpreted into ZFC, it is equiconsistent
-with ZFC, and so this machine halts if and only if ZFC is inconsistent.
+The Metamath system provides two versions of the axiom of infinity.  ax-inf
+states that there exists a nonempty set which is a subset of its union; this is
+one of the shorter axioms but requires both regularity and replacement to
+derive useful properties.  The other, ax-inf2, directly states the existence of
+a set which contains all finite ordinals; this is much longer but can be used
+in subsystems with only separation.  Since we have replacement but not
+regularity, we use neither; INF below is a form of Zermelo's axiom of infinity,
+describing a set which contains all iterated singletons of some element.
 
 Our final axiom set is:
 
@@ -176,23 +140,28 @@ Our final axiom set is:
     B2  ( ( -. ph -> ph ) -> ph )
     B3  ( ph -> ( -. ph -> ps ) )
     B4  ( A. x ( ph -> ps ) -> ( A. x ph -> A. x ps ) )
-    B6a1 ( x = y -> A. z x = y )
-            where x != z, y != z
-    B6a2 ( x e. y -> A. z x e. y )
+    B6a ( x = y -> A. z x = y /\ x e. y -> A. z x e. y )
             where x != z, y != z
     B6b ( A. x A. y ph -> A. y A. x ph )
-    B6c ( E. x A. x ph -> ph )
+    // B6c ( E. x A. x ph -> ph )
+    B6c ( E. x A. x ph -> A. x ph )
     B7  E. x x = y
-    B8a ( x = y -> ( x = z -> y = z ) )
+    // B8a ( x = y -> ( x = z -> y = z ) )
     B8b ( x = y -> ( x e. z -> y e. z ) )
     B8c ( x = y -> ( z e. x -> z e. y ) )
 
-    POW E. y A. z ( A. y ( y e. z -> y e. x ) -> z e. y )
-    UNI E. y A. z ( E. y ( z e. y /\ y e. x ) -> z e. y )
-    ICS E. y ( A. z ( ( z e. x -> ( E. x P -> z e. y ) )
-        /\ ( z e. y -> E. x P ) ) /\ A. x ( x e. y -> A. z
-        ( P -> E. z ( z e. y /\ P ) ) ) )
-                                                                               |
+    // EXT ( A. v_2 ( v_2 e. v_0 <-> v_2 e. v_1 ) -> v_0 = v_1 )
+    EXT E. v_2 ( ( v_2 e. v_0 <-> v_2 e. v_1 ) -> v_0 = v_1 )
+    EXT E. v_2 ( ( v_2 e. v_0 -> v_2 e. v_1 ) -> ( ( v_2 e. v_1 -> v_2 e. v_0 ) -> v_0 = v_1 ) )
+    // REP ( A. v_3 E. v_1 A. v_2 ( A. v_1 ph -> v_2 = v_1 ) ->
+    //     E. v_1 A. v_2 ( v_2 e. v_1 <-> E. v_3 ( v_3 e. v_0 /\ A. v_1 ph ) ) )
+    COL E. v_1 ( A. v_2 ( v_2 e. v_0 -> A. v_3 ( A. v_1 ph -> E. v_3 ( v_3 e. v_1 /\ ph ) ) )
+        /\ A. v_3 ( v_3 e. v_1 -> E. v_2 ph ) )
+    POW E. v_1 A. v_2 ( A. v_3 ( v_3 e. v_2 -> v_3 e. v_0 ) -> v_2 e. v_1 )
+    UNI E. v_1 A. v_2 ( E. v_3 ( v_2 e. v_3 /\ v_3 e. v_0 ) -> v_2 e. v_1 )
+    INF E. v_1 ( v_0 e. v_1 /\ A. v_0 ( v_0 e. v_1 -> E. v_2 ( v_2 e. v_1 /\
+        A. v_1 ( ( v_1 e. v_2 -> v_1 = v_0 ) /\ v_0 e. v_2 ) ) ) )
+
 # Encoding wffs and proofs as integers
 
 Define (X . Y) as X + (X + Y) * (X + Y + 1) / 2.  This is the Cantor pairing
@@ -220,8 +189,7 @@ a substitution instance of an axiom, so other forms will exist during
 execution.  They may consistently be treated as vacuous or unsatisfiable.
 
 The wff with numeric value 0 is |v_0 = v_0|.  This is a theorem of ZF, and may
-be substituted anywhere a theorem is required.  (In particular, it is used when
-detachment is invoked with invalid inputs.)  The wff with numeric value 1 is
+be substituted anywhere a theorem is required.  The wff with numeric value 1 is
 |v_0 e. v_0|; this is not a theorem, as its universal closure states that all
 sets contain themselves.  It serves as the canonical contradiction; the search
 stops when a proof of 1 is found.
@@ -240,27 +208,28 @@ of |v_0 = v_0| because 0 = (0 . 0).
 Axiom codes are assigned as follows.  -- means ignored.
 
     AC  P1  P2  P3  WHAT
-    0   ph  ps  ch  Push B1
-    1   ph  ps  --  Push B3
-    2   ph  --  --  Push B2
-    3   x   ph  ps  Push B4
-    4   x   y   ph  Push B6b
-    5   x   y   z   Push B8b
-    6   x   ph  --  Push B6c
-    7   x   y   z   Push B8a
-    8   x   y   z   Push B8c
-    9   x   y   --  Push B7
-    10  x   y   z   Push POW
-    11  x   y   z   Push UNI
-    12  x   y   z   Push ICS.  P2 is used for both y and ph.
-    13  x   y   z   Push B6a1
-    14  x   y   z   Push B6a2
-    15  x   --  --  Generalization rule.  Pops a theorem of statement ph;
-                    proves A. x ph.
-    >16 ps  --  --  Detachment rule.  Pops a minor premise (proof of ph), then
+    1   ps  --  --  Detachment rule.  Pops a minor premise (proof of ph), then
                     pops a major premise which is expected to match
-                    ( ph -> ps ).  If the major premise matches, pushes ps,
+                    ( ph -> P1 ).  If the major premise matches, pushes ps,
                     else pushes moot.
+    2   x   --  --  Generalization rule.  Pops a theorem of statement ph;
+                    proves A. x ph.
+    3   ph  ps  ch  Push B1
+    4   ph  --  --  Push B2
+    5   ph  ps  --  Push B3
+    6   x   ph  ps  Push B4
+    7   x   y   z   Push B6a if distinctness conds met, else moot
+    8   x   y   ph  Push B6b
+    9   x   ph  --  Push B6c
+    10  x   y   --  Push B7
+    11  x   y   z   Push B8a
+    12  x   y   z   Push B8b
+    13  x   y   z   Push B8c
+    14  --  --  --  Push EXT
+    15  ph  --  --  Push REP
+    16  --  --  --  Push POW
+    17  --  --  --  Push UNI
+    >17 --  --  --  Push INF
 
 # Use of variables
 
@@ -344,6 +313,8 @@ proc wim() { cons(); v_2_(); cons(); }
 proc wn()  { v_3_(); cons(); }
 proc wal() { cons(); v_4_(); cons(); }
 
+proc wimsel() { cons(); v_2_(); cons(); select(); }
+
 /*
 proc weq() { cons(); t2 = t2 + 0; pair(topwff, t2, topwff); }
 proc wel() { cons(); t2 = t2 + 1; pair(topwff, t2, topwff); }
@@ -377,7 +348,9 @@ proc par3() { pushwff(); topwff = param3; align_7(); }
 /* pop element under top earlier, pop top later */
 proc select() {
     unpair(t2, wffstack, wffstack);
-    if (decz axiomcode) {
+    if (axiomcode > 0) {
+        axiomcode = axiomcode - 1;
+    } else {
         builtin_move(topwff, t2);
     }
     /* align_7(); */
@@ -402,10 +375,11 @@ proc safety(p1, p2){
 }
 
 proc main() {
-    if (decz prooflist) {
+    if (prooflist == 0) {
         prooflist = nextproof;
         nextproof = nextproof + 1;
     }
+    prooflist = prooflist - 1;
 
     unpair(t2, prooflist, prooflist); builtin_move(axiomcode, t2);
     unpair(t2, prooflist, prooflist); builtin_move(param1, t2);
@@ -416,69 +390,50 @@ proc main() {
     /* no select since if axiomcode=0 all selects reject the new entry */
     par1(); par2(); wim(); par2(); par3(); wim(); par1(); par3(); wim(); wim(); wim();
 
-    /* B3 */
-    par1(); par1(); wn(); par2(); wim(); wim(); select();
-
     /* B2 */
-    par1(); wn(); par1(); wim(); par1(); wim(); select();
+    par1(); wn(); par1(); wim(); par1(); wimsel();
+
+    /* B3 */
+    par1(); par1(); wn(); par2(); wim(); wimsel();
 
     /* B4 */
-    par1(); par2(); par3(); wim(); wal(); par1(); par2(); wal(); par1(); par3(); wal(); wim(); wim(); select();
+    par1(); par2(); par3(); wim(); wal(); par1(); par2(); wal(); par1(); par3(); wal(); wim(); wimsel();
 
     /* B6b */
-    par1(); par2(); par3(); wal(); wal();  par2(); par1(); par3(); wal(); wal();  wim();  select();
+    par1(); par2(); par3(); wal(); wal();  par2(); par1(); par3(); wal(); wal();  wimsel();
+
+    /* B6c */
+    par1(); par1(); par2(); wal(); wex();  par1(); par2(); wal();  wimsel();
+
+    /* B7 */
+    par1(); par2(); par2(); par3(); weq(); wex(); wimsel();
+
+    /* B8a */
+    /* derivable using EXT */
+    
+    par1(); par2(); weq();  par1(); par3(); weq();  par2(); par3(); weq(); wim(); wimsel();
     
 
     /* B8b */
-    par1(); par2(); weq();  par1(); par3(); wel();  par2(); par3(); wel(); wim(); wim();  select();
-
-    /* B6c */
-    par1(); par1(); par2(); wal(); wex();  par2();  wim();  select();
-
-    /* B8a */
-    /* ( P = Q -> ( P = R -> Q = R ) ) */
-    /* derivable using EXT */
-    par1(); par2(); weq();  par1(); par3(); weq();  par2(); par3(); weq(); wim(); wim();  select();
+    par1(); par2(); weq();  par1(); par3(); wel();  par2(); par3(); wel(); wim(); wimsel();
 
     /* B8c */
-    par1(); par2(); weq();  par3(); par1(); wel();  par3(); par2(); wel(); wim(); wim();  select();
-
-    /* B7 */
-    par1(); par1(); par2(); weq(); wex(); select();
+    par1(); par2(); weq();  par3(); par1(); wel();  par3(); par2(); wel(); wim(); wimsel();
 
     /* EXT */
-    /* requires B8a */
     /*
     v_2();
     v_2(); v_0(); wel();  v_2(); v_1(); wel(); wim();
     v_2(); v_1(); wel();  v_2(); v_0(); wel(); wim(); wa();
-    wal();  v_0(); v_1(); weq(); wim();  select();
+    wal();  v_0(); v_1(); weq(); wimsel();
     */
-    /* doesn't require B8a */
     /*
     par2();
     par2(); par3(); wel();  par2(); par1(); wel(); wim();
     par2(); par1(); wel();  par2(); par3(); wel(); wim(); wa();
     par3(); par1(); weq(); wim();  wex();  select();
     */
-
-    safety(param1, param3);
-    safety(param2, param3);
-
-    /*
-    Below are descriptions in this machine's language of various axioms and
-    schemes which were not used in the final system, but which may be useful
-    for further research. The uncommented ones are POW, UNI, and INF+COL+SEP.
-    */
-
-    /* SEP */
-    /* E. y A. z ( ( z e. y -> ( z e. x /\ P ) ) /\ ( z e. x -> ( A. y P -> z e. y ) ) ) */
-    /*
-    v_1(); v_2();
-    v_2(); v_1(); wel(); v_2(); v_0(); wel(); par1(); wa(); wim();
-    v_2(); v_0(); wel(); v_1(); par1(); wal(); v_2(); v_1(); wel(); wim(); wim(); wa();
-    wal(); wex(); select();
-    */
+    
 
     /* REP+SEP */
     /* ( A. w E. y A. z ( A. y P -> z = y ) -> E. y A. z ( ( z e. y -> E. w ( w e. x /\ A. y P ) ) /\ ( E. w ( w e. x /\ A. y P ) -> z e. y ) ) ) */
@@ -488,7 +443,7 @@ proc main() {
     v_2(); v_1(); wel();  v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  wim();
     v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  v_2(); v_1(); wel();  wim(); wa();
     wal(); wex();
-    wim(); select();
+    wimsel();
     */
 
     /* COL+SEP */
@@ -498,7 +453,7 @@ proc main() {
     v_3(); v_3(); v_1(); wel(); v_2(); par1(); wex(); wim(); wal(); wa(); wex();  select();
     */
 
-    /* WCOL+SEP+UNI */
+    /* REP+SEP+UNI */
     /* E. y ( A. z ( z e. x -> ( E. w A. x ( P -> x e. w ) -> A. x ( A. y A. w P -> x e. y ) ) ) /\ A. x ( x e. y -> E. z P ) ) */
     /*
     v_1(); v_2(); v_2(); v_0(); wel(); v_3(); v_0(); par1(); v_0(); v_3(); wel(); wim(); wal(); wex(); v_0(); v_1();
@@ -512,20 +467,19 @@ proc main() {
     wal(); wa(); wex();  select();
     */
     /* E. y ( A. z ( z e. x -> ( E. y A. x ( P -> x e. y ) -> A. x ( A. y P -> x e. y ) ) ) /\ A. x ( x e. y -> E. z P ) ) */
-    /*
-    v_1(); v_2(); v_2(); v_0(); wel(); v_1(); v_0(); par1(); v_0(); v_1(); wel(); wim(); wal(); wex(); v_0(); v_1();
-    par1(); wal(); v_0(); v_1(); wel(); wim(); wal(); wim(); wim(); wal(); v_0(); v_0(); v_1(); wel(); v_2(); par1(); wex(); wim();
-    wal(); wa(); wex();  select();
-    */
+    
+    par1(); v_1(); v_2(); v_2(); v_0(); wel(); v_1(); v_0(); par2(); v_0(); v_1(); wel(); wim(); wal(); wex(); v_0(); v_1();
+    par2(); wal(); v_0(); v_1(); wel(); wim(); wal(); wim(); wim(); wal(); v_0(); v_0(); v_1(); wel(); v_2(); par2(); wex(); wim();
+    wal(); wa(); wex();  wimsel();
+    
 
     /* POW */
     /* E. y A. z ( A. w ( w e. z -> w e. x ) -> z e. y ) */
     /*
     v_1(); v_2();  v_3(); v_3(); v_2(); wel(); v_3(); v_0(); wel(); wim(); wal();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
     */
-    /* E. y A. z ( A. y ( y e. z -> y e. x ) -> z e. y ) */
     
-    par2(); par3();  par2(); par2(); par3(); wel(); par2(); par1(); wel(); wim(); wal();  par3(); par2(); wel(); wim();  wal(); wex();  select();
+    par1(); v_1(); v_2();  v_1(); v_1(); v_2(); wel(); v_1(); v_0(); wel(); wim(); wal();  v_2(); v_1(); wel(); wim();  wal(); wex();  wimsel();
     
 
     /* UNI */
@@ -533,10 +487,6 @@ proc main() {
     /*
     v_1(); v_2();  v_3(); v_2(); v_3(); wel(); v_3(); v_0(); wel(); wa(); wex();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
     */
-    /* E. y A. z ( E. y ( z e. y /\ y e. x ) -> z e. y ) */
-    
-    par2(); par3();  par2(); par3(); par2(); wel(); par2(); par1(); wel(); wa(); wex();  par3(); par2(); wel(); wim();  wal(); wex();  select();
-    
 
     /* UNI+POW */
     /* E. y A. z ( ( ~ A. w ( w e. z -> w e. x ) -> E. w ( z e. w /\ w e. x ) ) -> z e. y ) */
@@ -546,45 +496,20 @@ proc main() {
     v_3(); v_2(); v_3(); wel(); v_3(); v_0(); wel(); wa(); wex(); wim();
     v_2(); v_1(); wel(); wim();  wal(); wex();  select();
     */
-    /* E. y A. z ( ( ~ A. y ( y e. z -> y e. x ) -> E. y ( z e. y /\ y e. x ) ) -> z e. y ) */
-    /*
-    v_1(); v_2();
-    v_1(); v_1(); v_2(); wel(); v_1(); v_0(); wel(); wim(); wal(); wn();
-    v_1(); v_2(); v_1(); wel(); v_1(); v_0(); wel(); wa(); wex(); wim();
-    v_2(); v_1(); wel(); wim();  wal(); wex();  select();
-    */
 
-    /* INF */
+    /* INF2 */
     /* E. y ( x e. y /\ A. x ( x e. y -> A. z ( A. y P -> E. z ( z e. y /\ P ) ) ) ) */
-    /*
-    v_1(); v_0(); v_1(); wel(); v_0(); v_0(); v_1(); wel(); v_2(); v_1(); par1(); wal();
-    v_2(); v_2(); v_1(); wel(); par1(); wa(); wex(); wim(); wal(); wim(); wal(); wa(); wex();
-    select();
-    */
+    par1(); v_1(); v_0(); v_1(); wel(); v_0(); v_0(); v_1(); wel(); v_2(); v_1(); par2(); wal();
+    v_2(); v_2(); v_1(); wel(); par2(); wa(); wex(); wim(); wal(); wim(); wal(); wa(); wex();
+    wimsel();
 
-    /* INF+COL */
-    /* E. y ( A. z ( z e. x -> z e. y ) /\ A. x ( x e. y -> A. z ( A. y P -> E. z ( z e. y /\ P ) ) ) ) */
-    /*
-    v_1(); v_2(); v_2(); v_0(); wel(); v_2(); v_1(); wel(); wim(); wal(); v_0(); v_0(); v_1(); wel(); v_2(); v_1(); par1(); wal();
-    v_2(); v_2(); v_1(); wel(); par1(); wa(); wex(); wim(); wal(); wim(); wal(); wa(); wex();
-    select();
-    */
-
-    /* INF+COL+SEP */
-    /* E. y ( A. z ( ( z e. x -> ( E. x P -> z e. y ) ) /\ ( z e. y -> E. x P ) ) /\ A. x ( x e. y -> A. z ( P -> E. z ( z e. y /\ P ) ) ) ) */
-
-    par2(); par3(); par3(); par1(); wel(); par1(); par2(); wex(); par3(); par2(); wel(); wim(); wim();
-    par3(); par2(); wel(); par1(); par2(); wex(); wim(); wa();
-    wal(); par1(); par1(); par2(); wel(); par3(); par2();
-    par3(); par3(); par2(); wel(); par2(); wa(); wex(); wim(); wal(); wim(); wal(); wa(); wex();
-    select();
-
-    /* B6a1 */
-    par1(); par2(); weq();  par3(); par1(); par2(); weq(); wal();  wim();
-    select();
-    /* B6a2 */
-    par1(); par2(); wel();  par3(); par1(); par2(); wel(); wal();  wim();
-    select();
+    /* B6a */
+    safety(param1, param3);
+    safety(param2, param3);
+    par1(); par2(); weq();  par3(); par1(); par2(); weq(); wal();
+    wimsel();
+    par1(); par2(); wel();  par3(); par1(); par2(); wel(); wal();
+    wimsel();
 
     /* GEN */
     /* ph */
@@ -606,7 +531,7 @@ proc main() {
     select();
 
     if (topwff == 1) {
-        /* vacuously false wff (v_0 e. v_0) proved, we're done */
+        /* vacuously false wff proved, we're done */
         return;
     }
 }

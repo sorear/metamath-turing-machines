@@ -1,0 +1,122 @@
+// E. x A. y (A. z e. x E. w (w e. y /\ w e. z) -> E. z e. x A. w (w e. z -> E. v (w e. y /\ v e. y /\ ~ v = w))
+// E. x A. y (A. z (z e. x -> E. w (w e. y /\ w e. z)) -> E. z (z e. x /\ A. w (w e. z -> E. v (w e. y /\ v e. y /\ ~ v = w)))
+// ~ A. x ~ A. y (A. z (z e. x -> ~ A. w (w e. y -> ~ w e. z)) -> ~ A. z (z e. x -> ~ A. w (w e. z -> ~ A. v (w e. y -> (v e. y -> v = w))))
+
+// E. x (E. y (y e. z /\ A. z ~ z e. y) /\ A. y ( y e. z -> E. z (z e. x /\ A. w (w e. z <-> (w e. y \/ w = y)))))
+// E. y (x e. y /\ A. x (x e. y -> E. z (z e. y /\ A. y ((y e. z -> y = x) /\ (y = x -> y e. z)))))
+// E. y (x e. y /\ A. z (z e. y -> E. w (w e. y /\ A. y ((y e. w -> y = z) /\ (y = z -> y e. w)))))
+// E. y (x e. y /\ A. z (z e. y -> E. w (w e. y /\ A. y (y e. w <-> y = z))))
+
+// A. x E. x P
+// A. x (A. x ~P -> F)
+// (A. x A. x ~P -> A. x F)
+// (A. x A. x ~P -> F)
+// ~ A. x A. x ~P
+// E. x E. x P
+// ax-1 ax-6o ax-1 ax-1 ax-3 ax-3 ax-1 ax-mp ax-2 ax-mp ax-mp ax-1 ax-mp ax-2 ax-mp ax-mp ax-2 ax-mp ax-mp ax-3 ax-mp ax-1 ax-mp ax-2 ax-mp ax-mp ax-3 ax-mp ax-1 ax-3 ax-1 ax-mp ax-2 ax-mp ax-mp ax-gen ax-5 ax-mp ax-1 ax-mp ax-2 ax-mp ax-mp ax-5 ax-1 ax-mp ax-2 ax-mp ax-mp ax-9v ax-1 ax-mp ax-3 ax-mp ax-1 ax-mp ax-2 ax-mp ax-1 ax-mp ax-2 ax-mp ax-mp ax-1 ax-1 ax-3 ax-3 ax-1 ax-mp ax-2 ax-mp ax-mp ax-1 ax-mp ax-2 ax-mp ax-mp ax-2 ax-mp ax-2 ax-2 ax-mp ax-mp ax-1 ax-mp ax-2 ax-mp ax-mp ax-1 ax-mp ax-2 ax-mp ax-mp ax-3 ax-1 ax-mp ax-2 ax-mp ax-mp ax-2 ax-mp ax-mp ax-3 ax-mp
+
+// locked: c d
+// E. b ( A. c e. a A. d ( A. b P -> E. d e. b P ) /\ A. d e. b E. c P )
+// E. b ( A. c ( c e. a -> A. d ( A. b P -> E. d ( d e. b /\ P ) ) ) /\ A. d ( d e. b -> E. c P ) )
+
+// locked: z w
+// E. y A. z ( A. w e. z w e. x -> z e. y )
+
+// E. y A. z ( A. w e. z w e. x -> z e. y )
+// then
+// E. b ( A. z e. y A. d ( A. b P -> E. d e. b P ) /\ A. d e. b E. z P )
+// P = ( z = d /\ d ext=(w) x )
+// ( z = d ) = A. ? ( z e. ? -> d e. ? )
+// ( d ext=(w) x ) = A. w ( w e. d <-> w e. x )
+
+// E. b (
+//   A. z e. y A. d ( ( z = d /\ d ext=(w) x ) -> E. d e. b ( z = d /\ d ext=(w) x ) )
+//   /\ A. d e. b E. z ( z = d /\ d ext=(w) x )
+// )
+
+// -> E. b (
+//   A. z ( z <=(w) x -> A. d ( ( z = d /\ d ext=(w) x ) -> E. d e. b ( z = d /\ d ext=(w) x ) ) )
+//   /\ A. d e. b E. z ( z = d /\ d ext=(w) x )
+// )
+
+// <-> E. b (
+//   A. z ( z <=(w) x -> ( E. d ( z = d /\ d ext=(w) x ) -> E. d e. b ( z = d /\ d ext=(w) x ) ) )
+//   /\ A. d e. b E. z ( z = d /\ d ext=(w) x )
+// )
+
+// -> E. b (
+//   A. z ( z ext=(w) x -> ( E. d ( z = d /\ d ext=(w) x ) -> E. d e. b ( z = d /\ d ext=(w) x ) ) )
+//   /\ A. d e. b E. z ( z = d /\ d ext=(w) x )
+// )
+// nope
+
+// E. y A. z ( A. w e. z w e. x -> z e. y )
+
+// COL = E. b ( A. c ( c e. a -> A. d ( A. b P -> E. d ( d e. b /\ P ) ) ) /\ A. d ( d e. b -> E. c P ) )
+
+
+
+
+    /* EXT */
+    /* v_2();
+    v_2(); v_0(); wel();  v_2(); v_1(); wel(); wim();
+    v_2(); v_1(); wel();  v_2(); v_0(); wel(); wim(); wa();
+    wal();  v_0(); v_1(); weq(); wim();  select(); */
+    par2();
+    par2(); par3(); wel();  par2(); par1(); wel(); wim();
+    par2(); par1(); wel();  par2(); par3(); wel(); wim(); wa();
+    par3(); par1(); weq(); wim();  wex();  select();
+
+    /* REP */
+    /* v_3(); v_1(); v_2();  v_1(); par1(); wal(); v_2(); v_1(); weq(); wim();  wal(); wex(); wal();
+    v_1(); v_2();
+    v_2(); v_1(); wel();  v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  wim();
+    v_3(); v_3(); v_0(); wel(); v_1(); par1(); wal(); wa(); wex();  v_2(); v_1(); wel();  wim(); wa();
+    wal(); wex();
+    wim(); select(); */
+    /* COL */
+    v_1(); v_2(); v_2(); v_0(); wel(); v_3(); v_1(); par1(); wal(); v_3(); v_3(); v_1(); wel(); par1(); wa(); wex(); wim(); wal(); wim(); wal();
+    v_3(); v_3(); v_1(); wel(); v_2(); par1(); wex(); wim(); wal(); wa(); wex(); select();
+
+
+    /* POW */
+    v_1(); v_2();  v_3(); v_3(); v_2(); wel(); v_3(); v_0(); wel(); wim(); wal();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
+
+    /* UNI */
+    v_1(); v_2();  v_3(); v_2(); v_3(); wel(); v_3(); v_0(); wel(); wa(); wex();  v_2(); v_1(); wel(); wim();  wal(); wex();  select();
+
+    /* INF */
+    v_1(); v_0(); v_1(); wel();  v_0(); v_0(); v_1(); wel();  v_2(); v_2(); v_1(); wel();
+    v_1();   v_0(); v_2(); wel();
+    v_1(); v_0(); weq();  v_1(); v_2(); wel();  wim(); wa(); wal();
+    wa(); wex();  wim(); wal();  wa(); wex(); select();
+
+// E. x ( P -> Q ) <-> ( A. x P -> E. x Q )
+
+// Newcomp
+// DV w P, y P
+// A. x E. y ( A. z ( ( P -> z e. y ) /\ ( z e. y -> P ) )
+//   \/ E. z E. w ( P /\ A. z ( z = w -> P ) /\ ~ z e. x /\ ~ w e. x /\ E. y ( y e. z /\ ~ y e. w ) /\ A. y ( y e. z -> ( A. z ( z = y -> P ) -> y e. w ) ) )
+// )
+// A. x E. y ( A. z ( ( P -> z e. y ) /\ ( z e. y -> P ) )
+//   \/ E. z ( P /\ A. z ( z = y -> P ) /\ ~ z e. x /\ ~ y e. x /\ ~ A. w ( w e. y -> w e. z ) /\ A. w ( w e. z -> ( A. z ( z = w -> P ) -> w e. y ) ) )
+// )
+// A. x E. y ( E. z ( ( P -> z e. y ) -> ~ ( z e. y -> P ) )
+//   -> E. z ( P /\ A. z ( z = y -> P ) /\ ~ z e. x /\ ~ y e. x /\ ~ A. w ( w e. y -> w e. z ) /\ A. w ( w e. z -> ( A. z ( z = w -> P ) -> w e. y ) ) )
+// )
+
+// Small object comprehension
+// E. x A. y ( A. z ( A. x P -> ( y e. z -> y e. x ) ) /\ ( y e. x -> P ) )
+
+// MK Newcomp
+// ( y e. z -> E. z E. w ( x e. z \/ ( z e. x /\ w e. x /\ ~ z e. y /\ ~ w e. y /\ ~ A. y ( y e. w -> y e. z ) /\ A. y ( y e. z -> ( y e. x -> y e. w ) ) ) ) )
+// ( y e. z -> E. z E. w ( ~ x e. z -> ( z e. x /\ w e. x /\ ~ z e. y /\ ~ w e. y /\ ~ A. y ( y e. w -> y e. z ) /\ A. y ( y e. z -> ( y e. x -> y e. w ) ) ) ) )
+
+// Idea
+// P relates x and y
+// For every x there's a set of y it relates to
+// E. z A. x <= z ( P -> y e. z )
+// Inconsistent, so ensure the xs are cardinality <= a known set
+
+// Unify everything
+// E. z ( y e. z /\ x <= z /\ A. x <= z ( x small -> few outputs of P -> outputs of P <= z ) )

@@ -7,7 +7,7 @@ def _grammar():
 
     integer_ = pp.Word(pp.nums).setName('integer').setParseAction(lambda t: int(t[0]))
     reserved_words = {'while', 'proc', 'global', 'if', 'return', 'else', 'elsif', 'switch',
-                      'case', 'break', 'default', 'true', 'false'}
+                      'case', 'break', 'default', 'true', 'false', 'decz'}
     identifier_ = pp.Word(pp.alphas, pp.alphanums + '_') \
         .addCondition((lambda t: t[0] not in reserved_words), \
             message='reserved word').setName('identifier')
@@ -25,6 +25,7 @@ def _grammar():
     break_ = pp.Keyword('break')
     true_ = pp.Keyword('true')
     false_ = pp.Keyword('false')
+    decz_ = pp.Keyword('decz')
     lt_ = pp.Literal('<') + ~pp.Literal('=')
     gt_ = pp.Literal('>') + ~pp.Literal('=')
     le_ = pp.Literal('<=')
@@ -83,7 +84,7 @@ def _grammar():
                 elif assoc == 'left':
                     t[0:3] = [dobinop(line, *t[0:3])]
                 elif assoc == 'right':
-                    t[-4:-1] = [dobinop(line, *t[-4:-1])]
+                    t[-3:] = [dobinop(line, *t[-3:])]
                 else:
                     assert not "unhandled associativity"
             return t[0]
@@ -93,7 +94,7 @@ def _grammar():
         def associate(s, l, t):
             t = list(t)
             while len(t) > 1:
-                t[-3:-1] = [callop(t[-2], pp.lineno(l, s), t[-1])]
+                t[-2:] = [callop(t[-2], pp.lineno(l, s), t[-1])]
             return t[0]
         return (pp.ZeroOrMore(op_list) + prev).setParseAction(associate).setName(name)
 
@@ -120,7 +121,8 @@ def _grammar():
     or_expr = binop_level(and_expr, 'left', 'or', or_or)
 
     not_not = not_().setParseAction(lambda t: nql.Not)
-    not_expr = prefix_level(or_expr, 'not expression', not_not)
+    not_decz = decz_().setParseAction(lambda t: nql.DecZ)
+    not_expr = prefix_level(or_expr, 'not expression', not_not ^ not_decz)
 
     expr << not_expr
 

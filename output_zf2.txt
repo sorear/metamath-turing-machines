@@ -1,0 +1,1469 @@
+
+main()
+NAME: main() ORDER: 16 EFFICIENCY: 14646 / 65536
+    0000000000000000 -> reg_init
+    0000000000000001 -> reg_init
+    0000000000000010 -> reg_init
+    0000000000000011 -> reg_init
+    0000000000000100 -> reg_init
+    0000000000000101 -> reg_init
+    0000000000000110 -> reg_init
+    0000000000000111 -> reg_init
+    0000000000001000 -> reg_init
+    0000000000001001 -> reg_init
+    0000000000001010 -> reg_init
+    0000000000001011 -> reg_init
+    0000000000001100 -> reg_init
+    0000000000001101 -> reg_init
+    0000000000001110 -> reg_init
+    0000000000001111 -> reg_init
+    0000000000010000 -> reg_decr(_Gprooflist)
+    0000000000010001 -> main().jump(3,1) -> gen3
+    0000000000010010 -> main().jump(37,5) -> gen1
+    0000000000010011 -> noop.0 #gen3
+    00000000000101   -> noop.2
+    0000000000011    -> transfer(_Gnextproof,_Gprooflist,_scratch_1)
+    00000000001000   -> transfer(_scratch_1,_Gnextproof)
+    0000000000100100 -> reg_incr(_Gnextproof)
+    0000000000100101 -> noop.0 #gen1 #gen2
+    000000000010011  -> noop.1
+    0000000000101    -> noop.3
+    000000000011     -> noop.4
+    00000000010      -> unpair(_Gt2,_Gprooflist,_Gprooflist)
+    00000000011000   -> transfer(_Gaxiomcode)
+    00000000011001   -> transfer(_Gt2,_Gaxiomcode)
+    0000000001101    -> noop.3
+    000000000111     -> noop.4
+    00000000100      -> unpair(_Gt2,_Gprooflist,_Gprooflist)
+    00000000101000   -> transfer(_Gparam1)
+    00000000101001   -> transfer(_Gt2,_Gparam1)
+    0000000010101    -> noop.3
+    000000001011     -> noop.4
+    00000000110      -> unpair(_Gt2,_Gprooflist,_Gprooflist)
+    00000000111000   -> transfer(_Gparam2)
+    00000000111001   -> transfer(_Gt2,_Gparam2)
+    0000000011101    -> noop.3
+    000000001111     -> noop.4
+    00000001000      -> unpair(_Gt2,_Gprooflist,_Gprooflist)
+    00000001001000   -> transfer(_Gparam3)
+    00000001001001   -> transfer(_Gt2,_Gparam3)
+    0000000100101    -> noop.3
+    000000010011     -> noop.4
+    0000000101       -> noop.6
+    000000011        -> par1()
+    000000100        -> par2()
+    000000101        -> noop.7
+    00000011         -> wim()
+    000001000        -> par2()
+    000001001        -> par3()
+    00000101         -> wim()
+    000001100        -> par1()
+    000001101        -> par3()
+    00000111         -> wim()
+    00001000         -> wim()
+    00001001         -> wim()
+    000010100        -> par1()
+    000010101        -> par1()
+    000010110        -> wn()
+    000010111        -> par2()
+    00001100         -> wim()
+    00001101         -> wim()
+    0000111000       -> select()
+    0000111001       -> noop.6
+    000011101        -> par1()
+    000011110        -> wn()
+    000011111        -> par1()
+    00010000         -> wim()
+    000100010        -> par1()
+    000100011        -> noop.7
+    00010010         -> wim()
+    0001001100       -> select()
+    0001001101       -> noop.6
+    000100111        -> par1()
+    000101000        -> par2()
+    000101001        -> par3()
+    00010101         -> wim()
+    00010110         -> wal()
+    000101110        -> par1()
+    000101111        -> par2()
+    00011000         -> wal()
+    000110010        -> par1()
+    000110011        -> par3()
+    00011010         -> wal()
+    00011011         -> wim()
+    00011100         -> wim()
+    0001110100       -> select()
+    0001110101       -> noop.6
+    000111011        -> par1()
+    000111100        -> par2()
+    000111101        -> par3()
+    00011111         -> wal()
+    00100000         -> wal()
+    001000010        -> par2()
+    001000011        -> par1()
+    001000100        -> par3()
+    001000101        -> noop.7
+    00100011         -> wal()
+    00100100         -> wal()
+    00100101         -> wim()
+    0010011000       -> select()
+    0010011001       -> noop.6
+    001001101        -> par1()
+    001001110        -> par2()
+    001001111        -> noop.7
+    00101000         -> weq()
+    001010010        -> par1()
+    001010011        -> par3()
+    00101010         -> wel()
+    001010110        -> par2()
+    001010111        -> par3()
+    00101100         -> wel()
+    00101101         -> wim()
+    00101110         -> wim()
+    0010111100       -> select()
+    0010111101       -> noop.6
+    001011111        -> par1()
+    001100000        -> par1()
+    001100001        -> par2()
+    00110001         -> wal()
+    0011001          -> wex()
+    001101000        -> par2()
+    001101001        -> noop.7
+    00110101         -> wim()
+    0011011000       -> select()
+    0011011001       -> noop.6
+    001101101        -> par1()
+    001101110        -> par2()
+    001101111        -> noop.7
+    00111000         -> weq()
+    001110010        -> par1()
+    001110011        -> par3()
+    00111010         -> weq()
+    001110110        -> par2()
+    001110111        -> par3()
+    00111100         -> weq()
+    00111101         -> wim()
+    00111110         -> wim()
+    0011111100       -> select()
+    0011111101       -> noop.6
+    001111111        -> par1()
+    010000000        -> par2()
+    010000001        -> noop.7
+    01000001         -> weq()
+    010000100        -> par3()
+    010000101        -> par1()
+    01000011         -> wel()
+    010001000        -> par3()
+    010001001        -> par2()
+    01000101         -> wel()
+    01000110         -> wim()
+    01000111         -> wim()
+    0100100000       -> select()
+    0100100001       -> noop.6
+    010010001        -> par1()
+    010010010        -> par1()
+    010010011        -> par2()
+    01001010         -> weq()
+    01001011         -> noop.8
+    0100110          -> wex()
+    0100111000       -> select()
+    0100111001       -> safety(_Gparam1,_Gparam3)
+    0100111010       -> safety(_Gparam2,_Gparam3)
+    0100111011       -> noop.6
+    010011110        -> par2()
+    010011111        -> par3()
+    010100000        -> par2()
+    010100001        -> par2()
+    010100010        -> par3()
+    010100011        -> noop.7
+    01010010         -> wel()
+    010100110        -> par2()
+    010100111        -> par1()
+    01010100         -> wel()
+    01010101         -> wim()
+    01010110         -> wal()
+    010101110        -> par3()
+    010101111        -> par2()
+    01011000         -> wel()
+    01011001         -> wim()
+    01011010         -> wal()
+    01011011         -> noop.8
+    0101110          -> wex()
+    0101111000       -> select()
+    0101111001       -> noop.6
+    010111101        -> par2()
+    010111110        -> par3()
+    010111111        -> par2()
+    011000000        -> par3()
+    011000001        -> par2()
+    01100001         -> wel()
+    011000100        -> par2()
+    011000101        -> par1()
+    01100011         -> wel()
+    0110010          -> wa()
+    0110011          -> wex()
+    011010000        -> par3()
+    011010001        -> par2()
+    01101001         -> wel()
+    01101010         -> wim()
+    01101011         -> wal()
+    0110110          -> wex()
+    0110111000       -> select()
+    0110111001       -> noop.6
+    011011101        -> par2()
+    011011110        -> par3()
+    011011111        -> par3()
+    011100000        -> par1()
+    011100001        -> noop.7
+    01110001         -> wel()
+    011100100        -> par1()
+    011100101        -> par2()
+    01110011         -> noop.8
+    0111010          -> wex()
+    011101100        -> par3()
+    011101101        -> par2()
+    01110111         -> wel()
+    01111000         -> wim()
+    01111001         -> wim()
+    011110100        -> par3()
+    011110101        -> par2()
+    01111011         -> wel()
+    011111000        -> par1()
+    011111001        -> par2()
+    01111101         -> noop.8
+    0111111          -> wex()
+    10000000         -> wim()
+    10000001         -> noop.8
+    1000001          -> wa()
+    10000100         -> wal()
+    100001010        -> par1()
+    100001011        -> par1()
+    100001100        -> par2()
+    100001101        -> noop.7
+    10000111         -> wel()
+    100010000        -> par3()
+    100010001        -> par2()
+    100010010        -> par3()
+    100010011        -> par3()
+    100010100        -> par2()
+    100010101        -> noop.7
+    10001011         -> wel()
+    100011000        -> par2()
+    100011001        -> noop.7
+    10001101         -> noop.8
+    1000111          -> wa()
+    1001000          -> wex()
+    10010010         -> wim()
+    10010011         -> wal()
+    10010100         -> wim()
+    10010101         -> wal()
+    1001011          -> wa()
+    1001100          -> wex()
+    1001101000       -> select()
+    1001101001       -> noop.6
+    100110101        -> par1()
+    100110110        -> par2()
+    100110111        -> noop.7
+    10011100         -> weq()
+    100111010        -> par3()
+    100111011        -> par1()
+    100111100        -> par2()
+    100111101        -> noop.7
+    10011111         -> weq()
+    10100000         -> wal()
+    10100001         -> wim()
+    1010001000       -> select()
+    1010001001       -> noop.6
+    101000101        -> par1()
+    101000110        -> par2()
+    101000111        -> noop.7
+    10100100         -> wel()
+    101001010        -> par3()
+    101001011        -> par1()
+    101001100        -> par2()
+    101001101        -> noop.7
+    10100111         -> wel()
+    10101000         -> wal()
+    10101001         -> wim()
+    1010101000       -> select()
+    1010101001       -> noop.6
+    101010101        -> cparam(_Gparam2)
+    101010110        -> par1()
+    101010111        -> par2()
+    10101100         -> wal()
+    1010110100       -> select()
+    1010110101       -> noop.6
+    101011011        -> cparam(_Gparam2)
+    101011100        -> cparam(_Gparam3)
+    101011101        -> par2()
+    101011110        -> par1()
+    101011111        -> noop.7
+    10110000         -> wim()
+    1011000100000    -> transfer(_Gtopwff,_scratch_1,_scratch_2)
+    10110001000010   -> transfer(_scratch_2,_Gtopwff)
+    10110001000011   -> noop.2
+    1011000100010    -> transfer(_Gparam3,_scratch_2,_scratch_3)
+    10110001000110   -> transfer(_scratch_3,_Gparam3)
+    1011000100011100 -> reg_decr(_scratch_2) #gen39
+    1011000100011101 -> main().jump(5,2) -> gen40
+    1011000100011110 -> reg_decr(_scratch_1)
+    1011000100011111 -> main().jump(25,4) -> gen41
+    1011000100100000 -> main().jump(28,6) -> gen39
+    1011000100100001 -> reg_decr(_scratch_1) #gen40
+    1011000100100010 -> main().jump(17,4) -> gen42
+    1011000100100011 -> noop.0
+    10110001001001   -> transfer(_scratch_1)
+    1011000100101000 -> main().jump(37,5) -> gen37
+    1011000100101001 -> noop.0 #gen41
+    101100010010101  -> noop.1
+    10110001001011   -> transfer(_scratch_2)
+    1011000100110000 -> main().jump(37,5) -> gen37
+    1011000100110001 -> noop.0 #gen42
+    101100010011001  -> noop.1
+    10110001001101   -> noop.2
+    1011000100111    -> transfer(_Gparam1,_Gtopwff,_scratch_2)
+    10110001010000   -> transfer(_scratch_2,_Gparam1)
+    1011000101000100 -> main().jump(12,3) -> gen38
+    1011000101000101 -> noop.0 #gen37
+    101100010100011  -> noop.1
+    10110001010010   -> transfer(_Gtopwff)
+    10110001010011   -> noop.2 #gen38
+    101100010101     -> noop.4
+    10110001011      -> noop.5
+    1011000110       -> select()
+    1011000111000    -> transfer(_Gtopwff,_scratch_1,_scratch_2)
+    10110001110010   -> transfer(_scratch_1,_Gtopwff)
+    1011000111001100 -> reg_decr(_scratch_2)
+    1011000111001101 -> main().jump(14,3) -> gen43
+    1011000111001110 -> reg_decr(_scratch_2)
+    1011000111001111 -> main().jump(21,4) -> gen45
+    10110001110100   -> transfer(_scratch_2)
+    1011000111010100 -> main().jump(2,1) -> gen43
+    1011000111010101 -> halt #gen45
+    101100011101011  -> noop.1 #gen43 #gen44
+    1011000111011    -> noop.3
+    10110001111      -> noop.5
+    1011001          -> noop.9
+    101101           -> noop.10
+    10111            -> noop.11
+    11               -> noop.14
+
+noop.14
+NAME: noop.14 ORDER: 14 EFFICIENCY: 0 / 16384
+
+noop.11
+NAME: noop.11 ORDER: 11 EFFICIENCY: 0 / 2048
+
+noop.10
+NAME: noop.10 ORDER: 10 EFFICIENCY: 0 / 1024
+
+noop.9
+NAME: noop.9 ORDER: 9 EFFICIENCY: 0 / 512
+
+noop.5
+NAME: noop.5 ORDER: 5 EFFICIENCY: 0 / 32
+
+noop.3
+NAME: noop.3 ORDER: 3 EFFICIENCY: 0 / 8
+
+noop.1
+NAME: noop.1 ORDER: 1 EFFICIENCY: 0 / 2
+
+halt
+NAME: halt ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(2,1)
+NAME: main().jump(2,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2)
+NAME: transfer(_scratch_2) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2).jump(3,1) -> zero
+    10 -> transfer(_scratch_2).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+noop.0
+NAME: noop.0 ORDER: 0 EFFICIENCY: 0 / 1
+
+transfer(_scratch_2).jump(0,2)
+NAME: transfer(_scratch_2).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2).jump(3,1)
+NAME: transfer(_scratch_2).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_scratch_2)
+NAME: reg_decr(_scratch_2) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(21,4)
+NAME: main().jump(21,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(14,3)
+NAME: main().jump(14,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gtopwff)
+NAME: transfer(_scratch_1,_Gtopwff) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gtopwff).jump(4,2) -> zero
+    10 -> reg_incr(_Gtopwff)
+    11 -> transfer(_scratch_1,_Gtopwff).jump(0,2) -> again
+
+transfer(_scratch_1,_Gtopwff).jump(0,2)
+NAME: transfer(_scratch_1,_Gtopwff).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gtopwff)
+NAME: reg_incr(_Gtopwff) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gtopwff).jump(4,2)
+NAME: transfer(_scratch_1,_Gtopwff).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_scratch_1)
+NAME: reg_decr(_scratch_1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gtopwff,_scratch_1,_scratch_2)
+NAME: transfer(_Gtopwff,_scratch_1,_scratch_2) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gtopwff) #again
+    001 -> transfer(_Gtopwff,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gtopwff,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gtopwff,_scratch_1,_scratch_2).jump(0,3)
+NAME: transfer(_Gtopwff,_scratch_1,_scratch_2).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_scratch_2)
+NAME: reg_incr(_scratch_2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_scratch_1)
+NAME: reg_incr(_scratch_1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gtopwff,_scratch_1,_scratch_2).jump(5,2)
+NAME: transfer(_Gtopwff,_scratch_1,_scratch_2).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gtopwff)
+NAME: reg_decr(_Gtopwff) ORDER: 0 EFFICIENCY: 1 / 1
+
+select()
+NAME: select() ORDER: 6 EFFICIENCY: 31 / 64
+    0      -> unpair(_Gt2,_Gwffstack,_Gwffstack)
+    100000 -> reg_decr(_Gaxiomcode)
+    100001 -> select().jump(3,1) -> gen18
+    100010 -> select().jump(12,3) -> gen16
+    100011 -> noop.0 #gen18
+    1001   -> transfer(_Gtopwff)
+    1010   -> transfer(_Gt2,_Gtopwff)
+    1011   -> noop.2 #gen16 #gen17
+    11     -> noop.4
+
+noop.4
+NAME: noop.4 ORDER: 4 EFFICIENCY: 0 / 16
+
+noop.2
+NAME: noop.2 ORDER: 2 EFFICIENCY: 0 / 4
+
+transfer(_Gt2,_Gtopwff)
+NAME: transfer(_Gt2,_Gtopwff) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2,_Gtopwff).jump(4,2) -> zero
+    10 -> reg_incr(_Gtopwff)
+    11 -> transfer(_Gt2,_Gtopwff).jump(0,2) -> again
+
+transfer(_Gt2,_Gtopwff).jump(0,2)
+NAME: transfer(_Gt2,_Gtopwff).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gtopwff).jump(4,2)
+NAME: transfer(_Gt2,_Gtopwff).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gt2)
+NAME: reg_decr(_Gt2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gtopwff)
+NAME: transfer(_Gtopwff) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gtopwff) #again
+    01 -> transfer(_Gtopwff).jump(3,1) -> zero
+    10 -> transfer(_Gtopwff).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gtopwff).jump(0,2)
+NAME: transfer(_Gtopwff).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gtopwff).jump(3,1)
+NAME: transfer(_Gtopwff).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+select().jump(12,3)
+NAME: select().jump(12,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+select().jump(3,1)
+NAME: select().jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gaxiomcode)
+NAME: reg_decr(_Gaxiomcode) ORDER: 0 EFFICIENCY: 1 / 1
+
+unpair(_Gt2,_Gwffstack,_Gwffstack)
+NAME: unpair(_Gt2,_Gwffstack,_Gwffstack) ORDER: 5 EFFICIENCY: 21 / 32
+    000   -> transfer(_Gwffstack,_scratch_1)
+    001   -> transfer(_Gt2)
+    010   -> transfer(_Gwffstack)
+    01100 -> reg_decr(_scratch_1) #gen11
+    01101 -> unpair(_Gt2,_Gwffstack,_Gwffstack).jump(25,4) -> gen12
+    01110 -> reg_incr(_Gt2)
+    01111 -> reg_decr(_Gwffstack)
+    10000 -> unpair(_Gt2,_Gwffstack,_Gwffstack).jump(2,1) -> gen10
+    10001 -> unpair(_Gt2,_Gwffstack,_Gwffstack).jump(12,5) -> gen11
+    1001  -> noop.1 #gen10
+    101   -> transfer(_Gt2,_Gwffstack)
+    11000 -> unpair(_Gt2,_Gwffstack,_Gwffstack).jump(12,5) -> gen11
+    11001 -> noop.0 #gen12
+    1101  -> noop.1
+    111   -> noop.2
+
+unpair(_Gt2,_Gwffstack,_Gwffstack).jump(12,5)
+NAME: unpair(_Gt2,_Gwffstack,_Gwffstack).jump(12,5) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gwffstack)
+NAME: transfer(_Gt2,_Gwffstack) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2,_Gwffstack).jump(4,2) -> zero
+    10 -> reg_incr(_Gwffstack)
+    11 -> transfer(_Gt2,_Gwffstack).jump(0,2) -> again
+
+transfer(_Gt2,_Gwffstack).jump(0,2)
+NAME: transfer(_Gt2,_Gwffstack).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gwffstack)
+NAME: reg_incr(_Gwffstack) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gwffstack).jump(4,2)
+NAME: transfer(_Gt2,_Gwffstack).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+unpair(_Gt2,_Gwffstack,_Gwffstack).jump(2,1)
+NAME: unpair(_Gt2,_Gwffstack,_Gwffstack).jump(2,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gwffstack)
+NAME: reg_decr(_Gwffstack) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gt2)
+NAME: reg_incr(_Gt2) ORDER: 0 EFFICIENCY: 1 / 1
+
+unpair(_Gt2,_Gwffstack,_Gwffstack).jump(25,4)
+NAME: unpair(_Gt2,_Gwffstack,_Gwffstack).jump(25,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gwffstack)
+NAME: transfer(_Gwffstack) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gwffstack) #again
+    01 -> transfer(_Gwffstack).jump(3,1) -> zero
+    10 -> transfer(_Gwffstack).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gwffstack).jump(0,2)
+NAME: transfer(_Gwffstack).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gwffstack).jump(3,1)
+NAME: transfer(_Gwffstack).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2)
+NAME: transfer(_Gt2) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2).jump(3,1) -> zero
+    10 -> transfer(_Gt2).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gt2).jump(0,2)
+NAME: transfer(_Gt2).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2).jump(3,1)
+NAME: transfer(_Gt2).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gwffstack,_scratch_1)
+NAME: transfer(_Gwffstack,_scratch_1) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gwffstack) #again
+    01 -> transfer(_Gwffstack,_scratch_1).jump(4,2) -> zero
+    10 -> reg_incr(_scratch_1)
+    11 -> transfer(_Gwffstack,_scratch_1).jump(0,2) -> again
+
+transfer(_Gwffstack,_scratch_1).jump(0,2)
+NAME: transfer(_Gwffstack,_scratch_1).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gwffstack,_scratch_1).jump(4,2)
+NAME: transfer(_Gwffstack,_scratch_1).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(12,3)
+NAME: main().jump(12,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gparam1)
+NAME: transfer(_scratch_2,_Gparam1) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_Gparam1).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam1)
+    11 -> transfer(_scratch_2,_Gparam1).jump(0,2) -> again
+
+transfer(_scratch_2,_Gparam1).jump(0,2)
+NAME: transfer(_scratch_2,_Gparam1).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gparam1)
+NAME: reg_incr(_Gparam1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gparam1).jump(4,2)
+NAME: transfer(_scratch_2,_Gparam1).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1,_Gtopwff,_scratch_2)
+NAME: transfer(_Gparam1,_Gtopwff,_scratch_2) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gparam1) #again
+    001 -> transfer(_Gparam1,_Gtopwff,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_Gtopwff)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gparam1,_Gtopwff,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gparam1,_Gtopwff,_scratch_2).jump(0,3)
+NAME: transfer(_Gparam1,_Gtopwff,_scratch_2).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1,_Gtopwff,_scratch_2).jump(5,2)
+NAME: transfer(_Gparam1,_Gtopwff,_scratch_2).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gparam1)
+NAME: reg_decr(_Gparam1) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(37,5)
+NAME: main().jump(37,5) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1)
+NAME: transfer(_scratch_1) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1).jump(3,1) -> zero
+    10 -> transfer(_scratch_1).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_scratch_1).jump(0,2)
+NAME: transfer(_scratch_1).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1).jump(3,1)
+NAME: transfer(_scratch_1).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(17,4)
+NAME: main().jump(17,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(28,6)
+NAME: main().jump(28,6) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(25,4)
+NAME: main().jump(25,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(5,2)
+NAME: main().jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_3,_Gparam3)
+NAME: transfer(_scratch_3,_Gparam3) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_3) #again
+    01 -> transfer(_scratch_3,_Gparam3).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam3)
+    11 -> transfer(_scratch_3,_Gparam3).jump(0,2) -> again
+
+transfer(_scratch_3,_Gparam3).jump(0,2)
+NAME: transfer(_scratch_3,_Gparam3).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gparam3)
+NAME: reg_incr(_Gparam3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_3,_Gparam3).jump(4,2)
+NAME: transfer(_scratch_3,_Gparam3).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_scratch_3)
+NAME: reg_decr(_scratch_3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam3,_scratch_2,_scratch_3)
+NAME: transfer(_Gparam3,_scratch_2,_scratch_3) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gparam3) #again
+    001 -> transfer(_Gparam3,_scratch_2,_scratch_3).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_2)
+    011 -> reg_incr(_scratch_3)
+    100 -> transfer(_Gparam3,_scratch_2,_scratch_3).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gparam3,_scratch_2,_scratch_3).jump(0,3)
+NAME: transfer(_Gparam3,_scratch_2,_scratch_3).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_scratch_3)
+NAME: reg_incr(_scratch_3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam3,_scratch_2,_scratch_3).jump(5,2)
+NAME: transfer(_Gparam3,_scratch_2,_scratch_3).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gparam3)
+NAME: reg_decr(_Gparam3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gtopwff)
+NAME: transfer(_scratch_2,_Gtopwff) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_Gtopwff).jump(4,2) -> zero
+    10 -> reg_incr(_Gtopwff)
+    11 -> transfer(_scratch_2,_Gtopwff).jump(0,2) -> again
+
+transfer(_scratch_2,_Gtopwff).jump(0,2)
+NAME: transfer(_scratch_2,_Gtopwff).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gtopwff).jump(4,2)
+NAME: transfer(_scratch_2,_Gtopwff).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gtopwff,_scratch_1,_scratch_2)
+NAME: transfer(_Gtopwff,_scratch_1,_scratch_2) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gtopwff) #again
+    001 -> transfer(_Gtopwff,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gtopwff,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+wim()
+NAME: wim() ORDER: 8 EFFICIENCY: 104 / 256
+    00       -> cons()
+    01       -> v_2_()
+    10       -> cons()
+    11       -> noop.6
+
+noop.6
+NAME: noop.6 ORDER: 6 EFFICIENCY: 0 / 64
+
+cons()
+NAME: cons() ORDER: 6 EFFICIENCY: 41 / 64
+    0      -> unpair(_Gt2,_Gwffstack,_Gwffstack)
+    1      -> pair(_Gtopwff,_Gtopwff,_Gt2)
+
+pair(_Gtopwff,_Gtopwff,_Gt2)
+NAME: pair(_Gtopwff,_Gtopwff,_Gt2) ORDER: 5 EFFICIENCY: 20 / 32
+    00000 -> reg_decr(_Gtopwff) #gen13
+    00001 -> pair(_Gtopwff,_Gtopwff,_Gt2).jump(5,2) -> gen14
+    00010 -> reg_incr(_scratch_1)
+    00011 -> reg_incr(_Gt2)
+    00100 -> pair(_Gtopwff,_Gtopwff,_Gt2).jump(0,4) -> gen13
+    00101 -> reg_decr(_Gt2) #gen14
+    00110 -> pair(_Gtopwff,_Gtopwff,_Gt2).jump(13,3) -> gen15
+    00111 -> reg_incr(_scratch_1)
+    010   -> transfer(_Gt2,_Gtopwff)
+    01100 -> pair(_Gtopwff,_Gtopwff,_Gt2).jump(0,4) -> gen13
+    01101 -> noop.0 #gen15
+    0111  -> noop.1
+    100   -> transfer(_Gtopwff)
+    101   -> transfer(_scratch_1,_Gtopwff)
+    11    -> noop.3
+
+pair(_Gtopwff,_Gtopwff,_Gt2).jump(0,4)
+NAME: pair(_Gtopwff,_Gtopwff,_Gt2).jump(0,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+pair(_Gtopwff,_Gtopwff,_Gt2).jump(13,3)
+NAME: pair(_Gtopwff,_Gtopwff,_Gt2).jump(13,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+pair(_Gtopwff,_Gtopwff,_Gt2).jump(5,2)
+NAME: pair(_Gtopwff,_Gtopwff,_Gt2).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+v_2_()
+NAME: v_2_() ORDER: 6 EFFICIENCY: 22 / 64
+    0      -> pushwff()
+    100000 -> reg_incr(_Gtopwff)
+    100001 -> reg_incr(_Gtopwff)
+    10001  -> noop.1
+    1001   -> noop.2
+    101    -> noop.3
+    11     -> noop.4
+
+pushwff()
+NAME: pushwff() ORDER: 5 EFFICIENCY: 20 / 32
+          -> pair(_Gwffstack,_Gtopwff,_Gwffstack)
+
+pair(_Gwffstack,_Gtopwff,_Gwffstack)
+NAME: pair(_Gwffstack,_Gtopwff,_Gwffstack) ORDER: 5 EFFICIENCY: 20 / 32
+    00000 -> reg_decr(_Gtopwff) #gen7
+    00001 -> pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(5,2) -> gen8
+    00010 -> reg_incr(_scratch_1)
+    00011 -> reg_incr(_Gwffstack)
+    00100 -> pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(0,4) -> gen7
+    00101 -> reg_decr(_Gwffstack) #gen8
+    00110 -> pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(13,3) -> gen9
+    00111 -> reg_incr(_scratch_1)
+    010   -> transfer(_Gwffstack,_Gtopwff)
+    01100 -> pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(0,4) -> gen7
+    01101 -> noop.0 #gen9
+    0111  -> noop.1
+    100   -> transfer(_Gwffstack)
+    101   -> transfer(_scratch_1,_Gwffstack)
+    11    -> noop.3
+
+transfer(_scratch_1,_Gwffstack)
+NAME: transfer(_scratch_1,_Gwffstack) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gwffstack).jump(4,2) -> zero
+    10 -> reg_incr(_Gwffstack)
+    11 -> transfer(_scratch_1,_Gwffstack).jump(0,2) -> again
+
+transfer(_scratch_1,_Gwffstack).jump(0,2)
+NAME: transfer(_scratch_1,_Gwffstack).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gwffstack).jump(4,2)
+NAME: transfer(_scratch_1,_Gwffstack).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(0,4)
+NAME: pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(0,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gwffstack,_Gtopwff)
+NAME: transfer(_Gwffstack,_Gtopwff) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gwffstack) #again
+    01 -> transfer(_Gwffstack,_Gtopwff).jump(4,2) -> zero
+    10 -> reg_incr(_Gtopwff)
+    11 -> transfer(_Gwffstack,_Gtopwff).jump(0,2) -> again
+
+transfer(_Gwffstack,_Gtopwff).jump(0,2)
+NAME: transfer(_Gwffstack,_Gtopwff).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gwffstack,_Gtopwff).jump(4,2)
+NAME: transfer(_Gwffstack,_Gtopwff).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(13,3)
+NAME: pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(13,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(5,2)
+NAME: pair(_Gwffstack,_Gtopwff,_Gwffstack).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+noop.7
+NAME: noop.7 ORDER: 7 EFFICIENCY: 0 / 128
+
+par1()
+NAME: par1() ORDER: 7 EFFICIENCY: 29 / 128
+    00      -> pushwff()
+    0100    -> transfer(_Gparam1,_Gtopwff,_scratch_1)
+    01010   -> transfer(_scratch_1,_Gparam1)
+    01011   -> noop.2
+    011     -> noop.4
+    1       -> noop.6
+
+transfer(_scratch_1,_Gparam1)
+NAME: transfer(_scratch_1,_Gparam1) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gparam1).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam1)
+    11 -> transfer(_scratch_1,_Gparam1).jump(0,2) -> again
+
+transfer(_scratch_1,_Gparam1).jump(0,2)
+NAME: transfer(_scratch_1,_Gparam1).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gparam1).jump(4,2)
+NAME: transfer(_scratch_1,_Gparam1).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1,_Gtopwff,_scratch_1)
+NAME: transfer(_Gparam1,_Gtopwff,_scratch_1) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gparam1) #again
+    001 -> transfer(_Gparam1,_Gtopwff,_scratch_1).jump(5,2) -> zero
+    010 -> reg_incr(_Gtopwff)
+    011 -> reg_incr(_scratch_1)
+    100 -> transfer(_Gparam1,_Gtopwff,_scratch_1).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gparam1,_Gtopwff,_scratch_1).jump(0,3)
+NAME: transfer(_Gparam1,_Gtopwff,_scratch_1).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1,_Gtopwff,_scratch_1).jump(5,2)
+NAME: transfer(_Gparam1,_Gtopwff,_scratch_1).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+par2()
+NAME: par2() ORDER: 7 EFFICIENCY: 29 / 128
+    00      -> pushwff()
+    0100    -> transfer(_Gparam2,_Gtopwff,_scratch_1)
+    01010   -> transfer(_scratch_1,_Gparam2)
+    01011   -> noop.2
+    011     -> noop.4
+    1       -> noop.6
+
+transfer(_scratch_1,_Gparam2)
+NAME: transfer(_scratch_1,_Gparam2) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gparam2).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam2)
+    11 -> transfer(_scratch_1,_Gparam2).jump(0,2) -> again
+
+transfer(_scratch_1,_Gparam2).jump(0,2)
+NAME: transfer(_scratch_1,_Gparam2).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gparam2)
+NAME: reg_incr(_Gparam2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gparam2).jump(4,2)
+NAME: transfer(_scratch_1,_Gparam2).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam2,_Gtopwff,_scratch_1)
+NAME: transfer(_Gparam2,_Gtopwff,_scratch_1) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gparam2) #again
+    001 -> transfer(_Gparam2,_Gtopwff,_scratch_1).jump(5,2) -> zero
+    010 -> reg_incr(_Gtopwff)
+    011 -> reg_incr(_scratch_1)
+    100 -> transfer(_Gparam2,_Gtopwff,_scratch_1).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gparam2,_Gtopwff,_scratch_1).jump(0,3)
+NAME: transfer(_Gparam2,_Gtopwff,_scratch_1).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam2,_Gtopwff,_scratch_1).jump(5,2)
+NAME: transfer(_Gparam2,_Gtopwff,_scratch_1).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gparam2)
+NAME: reg_decr(_Gparam2) ORDER: 0 EFFICIENCY: 1 / 1
+
+cparam(_Gparam3)
+NAME: cparam(_Gparam3) ORDER: 7 EFFICIENCY: 45 / 128
+    0000    -> transfer(_Gaxiomcode,_scratch_1,_scratch_2)
+    00010   -> transfer(_scratch_2,_Gaxiomcode)
+    0001100 -> reg_decr(_scratch_1)
+    0001101 -> cparam(_Gparam3).jump(72,6) -> gen34
+    0001110 -> reg_decr(_scratch_1)
+    0001111 -> cparam(_Gparam3).jump(13,3) -> gen36
+    00100   -> transfer(_scratch_1)
+    0010100 -> cparam(_Gparam3).jump(72,6) -> gen34
+    0010101 -> noop.0 #gen36
+    001011  -> noop.1
+    0011    -> noop.3
+    01      -> unpair(_Gt2,_Gwffstack,_Gwffstack)
+    10000   -> transfer(_Gparam3)
+    10001   -> transfer(_Gt2,_Gparam3)
+    1001    -> noop.3 #gen34 #gen35
+    101     -> noop.4
+    11      -> noop.5
+
+transfer(_Gt2,_Gparam3)
+NAME: transfer(_Gt2,_Gparam3) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2,_Gparam3).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam3)
+    11 -> transfer(_Gt2,_Gparam3).jump(0,2) -> again
+
+transfer(_Gt2,_Gparam3).jump(0,2)
+NAME: transfer(_Gt2,_Gparam3).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gparam3).jump(4,2)
+NAME: transfer(_Gt2,_Gparam3).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam3)
+NAME: transfer(_Gparam3) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gparam3) #again
+    01 -> transfer(_Gparam3).jump(3,1) -> zero
+    10 -> transfer(_Gparam3).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gparam3).jump(0,2)
+NAME: transfer(_Gparam3).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam3).jump(3,1)
+NAME: transfer(_Gparam3).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+cparam(_Gparam3).jump(72,6)
+NAME: cparam(_Gparam3).jump(72,6) ORDER: 0 EFFICIENCY: 1 / 1
+
+cparam(_Gparam3).jump(13,3)
+NAME: cparam(_Gparam3).jump(13,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gaxiomcode)
+NAME: transfer(_scratch_2,_Gaxiomcode) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_Gaxiomcode).jump(4,2) -> zero
+    10 -> reg_incr(_Gaxiomcode)
+    11 -> transfer(_scratch_2,_Gaxiomcode).jump(0,2) -> again
+
+transfer(_scratch_2,_Gaxiomcode).jump(0,2)
+NAME: transfer(_scratch_2,_Gaxiomcode).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gaxiomcode)
+NAME: reg_incr(_Gaxiomcode) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gaxiomcode).jump(4,2)
+NAME: transfer(_scratch_2,_Gaxiomcode).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gaxiomcode,_scratch_1,_scratch_2)
+NAME: transfer(_Gaxiomcode,_scratch_1,_scratch_2) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gaxiomcode) #again
+    001 -> transfer(_Gaxiomcode,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gaxiomcode,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gaxiomcode,_scratch_1,_scratch_2).jump(0,3)
+NAME: transfer(_Gaxiomcode,_scratch_1,_scratch_2).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gaxiomcode,_scratch_1,_scratch_2).jump(5,2)
+NAME: transfer(_Gaxiomcode,_scratch_1,_scratch_2).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+cparam(_Gparam2)
+NAME: cparam(_Gparam2) ORDER: 7 EFFICIENCY: 45 / 128
+    0000    -> transfer(_Gaxiomcode,_scratch_1,_scratch_2)
+    00010   -> transfer(_scratch_2,_Gaxiomcode)
+    0001100 -> reg_decr(_scratch_1)
+    0001101 -> cparam(_Gparam2).jump(72,6) -> gen31
+    0001110 -> reg_decr(_scratch_1)
+    0001111 -> cparam(_Gparam2).jump(13,3) -> gen33
+    00100   -> transfer(_scratch_1)
+    0010100 -> cparam(_Gparam2).jump(72,6) -> gen31
+    0010101 -> noop.0 #gen33
+    001011  -> noop.1
+    0011    -> noop.3
+    01      -> unpair(_Gt2,_Gwffstack,_Gwffstack)
+    10000   -> transfer(_Gparam2)
+    10001   -> transfer(_Gt2,_Gparam2)
+    1001    -> noop.3 #gen31 #gen32
+    101     -> noop.4
+    11      -> noop.5
+
+transfer(_Gt2,_Gparam2)
+NAME: transfer(_Gt2,_Gparam2) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2,_Gparam2).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam2)
+    11 -> transfer(_Gt2,_Gparam2).jump(0,2) -> again
+
+transfer(_Gt2,_Gparam2).jump(0,2)
+NAME: transfer(_Gt2,_Gparam2).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gparam2).jump(4,2)
+NAME: transfer(_Gt2,_Gparam2).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam2)
+NAME: transfer(_Gparam2) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gparam2) #again
+    01 -> transfer(_Gparam2).jump(3,1) -> zero
+    10 -> transfer(_Gparam2).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gparam2).jump(0,2)
+NAME: transfer(_Gparam2).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam2).jump(3,1)
+NAME: transfer(_Gparam2).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+cparam(_Gparam2).jump(72,6)
+NAME: cparam(_Gparam2).jump(72,6) ORDER: 0 EFFICIENCY: 1 / 1
+
+cparam(_Gparam2).jump(13,3)
+NAME: cparam(_Gparam2).jump(13,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+wal()
+NAME: wal() ORDER: 8 EFFICIENCY: 106 / 256
+    00       -> cons()
+    01       -> v_4_()
+    10       -> cons()
+    11       -> noop.6
+
+v_4_()
+NAME: v_4_() ORDER: 6 EFFICIENCY: 24 / 64
+    0      -> pushwff()
+    100000 -> reg_incr(_Gtopwff)
+    100001 -> reg_incr(_Gtopwff)
+    100010 -> reg_incr(_Gtopwff)
+    100011 -> reg_incr(_Gtopwff)
+    1001   -> noop.2
+    101    -> noop.3
+    11     -> noop.4
+
+wel()
+NAME: wel() ORDER: 8 EFFICIENCY: 103 / 256
+    00       -> cons()
+    01       -> v_1_()
+    10       -> cons()
+    11       -> noop.6
+
+v_1_()
+NAME: v_1_() ORDER: 6 EFFICIENCY: 21 / 64
+    0      -> pushwff()
+    100000 -> reg_incr(_Gtopwff)
+    100001 -> noop.0
+    10001  -> noop.1
+    1001   -> noop.2
+    101    -> noop.3
+    11     -> noop.4
+
+par3()
+NAME: par3() ORDER: 7 EFFICIENCY: 29 / 128
+    00      -> pushwff()
+    0100    -> transfer(_Gparam3,_Gtopwff,_scratch_1)
+    01010   -> transfer(_scratch_1,_Gparam3)
+    01011   -> noop.2
+    011     -> noop.4
+    1       -> noop.6
+
+transfer(_scratch_1,_Gparam3)
+NAME: transfer(_scratch_1,_Gparam3) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gparam3).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam3)
+    11 -> transfer(_scratch_1,_Gparam3).jump(0,2) -> again
+
+transfer(_scratch_1,_Gparam3).jump(0,2)
+NAME: transfer(_scratch_1,_Gparam3).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gparam3).jump(4,2)
+NAME: transfer(_scratch_1,_Gparam3).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam3,_Gtopwff,_scratch_1)
+NAME: transfer(_Gparam3,_Gtopwff,_scratch_1) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gparam3) #again
+    001 -> transfer(_Gparam3,_Gtopwff,_scratch_1).jump(5,2) -> zero
+    010 -> reg_incr(_Gtopwff)
+    011 -> reg_incr(_scratch_1)
+    100 -> transfer(_Gparam3,_Gtopwff,_scratch_1).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gparam3,_Gtopwff,_scratch_1).jump(0,3)
+NAME: transfer(_Gparam3,_Gtopwff,_scratch_1).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam3,_Gtopwff,_scratch_1).jump(5,2)
+NAME: transfer(_Gparam3,_Gtopwff,_scratch_1).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+weq()
+NAME: weq() ORDER: 8 EFFICIENCY: 102 / 256
+    00       -> cons()
+    010      -> v_0_()
+    011      -> noop.5
+    10       -> cons()
+    11       -> noop.6
+
+v_0_()
+NAME: v_0_() ORDER: 5 EFFICIENCY: 20 / 32
+          -> pushwff()
+
+wex()
+NAME: wex() ORDER: 9 EFFICIENCY: 234 / 512
+    00        -> wn()
+    010       -> cons()
+    011       -> v_4_()
+    100       -> cons()
+    101       -> noop.6
+    11        -> wn()
+
+wn()
+NAME: wn() ORDER: 7 EFFICIENCY: 64 / 128
+    0       -> v_3_()
+    1       -> cons()
+
+v_3_()
+NAME: v_3_() ORDER: 6 EFFICIENCY: 23 / 64
+    0      -> pushwff()
+    100000 -> reg_incr(_Gtopwff)
+    100001 -> reg_incr(_Gtopwff)
+    100010 -> reg_incr(_Gtopwff)
+    100011 -> noop.0
+    1001   -> noop.2
+    101    -> noop.3
+    11     -> noop.4
+
+wa()
+NAME: wa() ORDER: 9 EFFICIENCY: 232 / 512
+    00        -> wn()
+    010       -> cons()
+    011       -> v_2_()
+    100       -> cons()
+    101       -> noop.6
+    11        -> wn()
+
+noop.8
+NAME: noop.8 ORDER: 8 EFFICIENCY: 0 / 256
+
+safety(_Gparam2,_Gparam3)
+NAME: safety(_Gparam2,_Gparam3) ORDER: 6 EFFICIENCY: 34 / 64
+    000    -> transfer(_Gparam2,_scratch_1,_scratch_2)
+    0010   -> transfer(_scratch_2,_Gparam2)
+    0011   -> noop.2
+    010    -> transfer(_Gparam3,_scratch_2,_scratch_3)
+    0110   -> transfer(_scratch_3,_Gparam3)
+    011100 -> reg_decr(_scratch_2) #gen27
+    011101 -> safety(_Gparam2,_Gparam3).jump(5,2) -> gen28
+    011110 -> reg_decr(_scratch_1)
+    011111 -> safety(_Gparam2,_Gparam3).jump(25,4) -> gen29
+    100000 -> safety(_Gparam2,_Gparam3).jump(28,6) -> gen27
+    100001 -> reg_decr(_scratch_1) #gen28
+    100010 -> safety(_Gparam2,_Gparam3).jump(17,4) -> gen30
+    100011 -> noop.0
+    1001   -> transfer(_scratch_1)
+    101000 -> safety(_Gparam2,_Gparam3).jump(10,3) -> gen25
+    101001 -> noop.0 #gen29
+    10101  -> noop.1
+    1011   -> transfer(_scratch_2)
+    110000 -> safety(_Gparam2,_Gparam3).jump(2,1) -> gen25
+    110001 -> reg_incr(_Gparam2) #gen30
+    11001  -> noop.1 #gen25 #gen26
+    1101   -> noop.2
+    111    -> noop.3
+
+safety(_Gparam2,_Gparam3).jump(2,1)
+NAME: safety(_Gparam2,_Gparam3).jump(2,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam2,_Gparam3).jump(10,3)
+NAME: safety(_Gparam2,_Gparam3).jump(10,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam2,_Gparam3).jump(17,4)
+NAME: safety(_Gparam2,_Gparam3).jump(17,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam2,_Gparam3).jump(28,6)
+NAME: safety(_Gparam2,_Gparam3).jump(28,6) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam2,_Gparam3).jump(25,4)
+NAME: safety(_Gparam2,_Gparam3).jump(25,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam2,_Gparam3).jump(5,2)
+NAME: safety(_Gparam2,_Gparam3).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gparam2)
+NAME: transfer(_scratch_2,_Gparam2) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_Gparam2).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam2)
+    11 -> transfer(_scratch_2,_Gparam2).jump(0,2) -> again
+
+transfer(_scratch_2,_Gparam2).jump(0,2)
+NAME: transfer(_scratch_2,_Gparam2).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_2,_Gparam2).jump(4,2)
+NAME: transfer(_scratch_2,_Gparam2).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam2,_scratch_1,_scratch_2)
+NAME: transfer(_Gparam2,_scratch_1,_scratch_2) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gparam2) #again
+    001 -> transfer(_Gparam2,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gparam2,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gparam2,_scratch_1,_scratch_2).jump(0,3)
+NAME: transfer(_Gparam2,_scratch_1,_scratch_2).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam2,_scratch_1,_scratch_2).jump(5,2)
+NAME: transfer(_Gparam2,_scratch_1,_scratch_2).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam1,_Gparam3)
+NAME: safety(_Gparam1,_Gparam3) ORDER: 6 EFFICIENCY: 34 / 64
+    000    -> transfer(_Gparam1,_scratch_1,_scratch_2)
+    0010   -> transfer(_scratch_2,_Gparam1)
+    0011   -> noop.2
+    010    -> transfer(_Gparam3,_scratch_2,_scratch_3)
+    0110   -> transfer(_scratch_3,_Gparam3)
+    011100 -> reg_decr(_scratch_2) #gen21
+    011101 -> safety(_Gparam1,_Gparam3).jump(5,2) -> gen22
+    011110 -> reg_decr(_scratch_1)
+    011111 -> safety(_Gparam1,_Gparam3).jump(25,4) -> gen23
+    100000 -> safety(_Gparam1,_Gparam3).jump(28,6) -> gen21
+    100001 -> reg_decr(_scratch_1) #gen22
+    100010 -> safety(_Gparam1,_Gparam3).jump(17,4) -> gen24
+    100011 -> noop.0
+    1001   -> transfer(_scratch_1)
+    101000 -> safety(_Gparam1,_Gparam3).jump(10,3) -> gen19
+    101001 -> noop.0 #gen23
+    10101  -> noop.1
+    1011   -> transfer(_scratch_2)
+    110000 -> safety(_Gparam1,_Gparam3).jump(2,1) -> gen19
+    110001 -> reg_incr(_Gparam1) #gen24
+    11001  -> noop.1 #gen19 #gen20
+    1101   -> noop.2
+    111    -> noop.3
+
+safety(_Gparam1,_Gparam3).jump(2,1)
+NAME: safety(_Gparam1,_Gparam3).jump(2,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam1,_Gparam3).jump(10,3)
+NAME: safety(_Gparam1,_Gparam3).jump(10,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam1,_Gparam3).jump(17,4)
+NAME: safety(_Gparam1,_Gparam3).jump(17,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam1,_Gparam3).jump(28,6)
+NAME: safety(_Gparam1,_Gparam3).jump(28,6) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam1,_Gparam3).jump(25,4)
+NAME: safety(_Gparam1,_Gparam3).jump(25,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+safety(_Gparam1,_Gparam3).jump(5,2)
+NAME: safety(_Gparam1,_Gparam3).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1,_scratch_1,_scratch_2)
+NAME: transfer(_Gparam1,_scratch_1,_scratch_2) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gparam1) #again
+    001 -> transfer(_Gparam1,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gparam1,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gparam1,_scratch_1,_scratch_2).jump(0,3)
+NAME: transfer(_Gparam1,_scratch_1,_scratch_2).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1,_scratch_1,_scratch_2).jump(5,2)
+NAME: transfer(_Gparam1,_scratch_1,_scratch_2).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+unpair(_Gt2,_Gprooflist,_Gprooflist)
+NAME: unpair(_Gt2,_Gprooflist,_Gprooflist) ORDER: 5 EFFICIENCY: 21 / 32
+    000   -> transfer(_Gprooflist,_scratch_1)
+    001   -> transfer(_Gt2)
+    010   -> transfer(_Gprooflist)
+    01100 -> reg_decr(_scratch_1) #gen5
+    01101 -> unpair(_Gt2,_Gprooflist,_Gprooflist).jump(25,4) -> gen6
+    01110 -> reg_incr(_Gt2)
+    01111 -> reg_decr(_Gprooflist)
+    10000 -> unpair(_Gt2,_Gprooflist,_Gprooflist).jump(2,1) -> gen4
+    10001 -> unpair(_Gt2,_Gprooflist,_Gprooflist).jump(12,5) -> gen5
+    1001  -> noop.1 #gen4
+    101   -> transfer(_Gt2,_Gprooflist)
+    11000 -> unpair(_Gt2,_Gprooflist,_Gprooflist).jump(12,5) -> gen5
+    11001 -> noop.0 #gen6
+    1101  -> noop.1
+    111   -> noop.2
+
+unpair(_Gt2,_Gprooflist,_Gprooflist).jump(12,5)
+NAME: unpair(_Gt2,_Gprooflist,_Gprooflist).jump(12,5) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gprooflist)
+NAME: transfer(_Gt2,_Gprooflist) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2,_Gprooflist).jump(4,2) -> zero
+    10 -> reg_incr(_Gprooflist)
+    11 -> transfer(_Gt2,_Gprooflist).jump(0,2) -> again
+
+transfer(_Gt2,_Gprooflist).jump(0,2)
+NAME: transfer(_Gt2,_Gprooflist).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gprooflist)
+NAME: reg_incr(_Gprooflist) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gprooflist).jump(4,2)
+NAME: transfer(_Gt2,_Gprooflist).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+unpair(_Gt2,_Gprooflist,_Gprooflist).jump(2,1)
+NAME: unpair(_Gt2,_Gprooflist,_Gprooflist).jump(2,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gprooflist)
+NAME: reg_decr(_Gprooflist) ORDER: 0 EFFICIENCY: 1 / 1
+
+unpair(_Gt2,_Gprooflist,_Gprooflist).jump(25,4)
+NAME: unpair(_Gt2,_Gprooflist,_Gprooflist).jump(25,4) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gprooflist)
+NAME: transfer(_Gprooflist) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gprooflist) #again
+    01 -> transfer(_Gprooflist).jump(3,1) -> zero
+    10 -> transfer(_Gprooflist).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gprooflist).jump(0,2)
+NAME: transfer(_Gprooflist).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gprooflist).jump(3,1)
+NAME: transfer(_Gprooflist).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gprooflist,_scratch_1)
+NAME: transfer(_Gprooflist,_scratch_1) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gprooflist) #again
+    01 -> transfer(_Gprooflist,_scratch_1).jump(4,2) -> zero
+    10 -> reg_incr(_scratch_1)
+    11 -> transfer(_Gprooflist,_scratch_1).jump(0,2) -> again
+
+transfer(_Gprooflist,_scratch_1).jump(0,2)
+NAME: transfer(_Gprooflist,_scratch_1).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gprooflist,_scratch_1).jump(4,2)
+NAME: transfer(_Gprooflist,_scratch_1).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gparam1)
+NAME: transfer(_Gt2,_Gparam1) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2,_Gparam1).jump(4,2) -> zero
+    10 -> reg_incr(_Gparam1)
+    11 -> transfer(_Gt2,_Gparam1).jump(0,2) -> again
+
+transfer(_Gt2,_Gparam1).jump(0,2)
+NAME: transfer(_Gt2,_Gparam1).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gparam1).jump(4,2)
+NAME: transfer(_Gt2,_Gparam1).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1)
+NAME: transfer(_Gparam1) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gparam1) #again
+    01 -> transfer(_Gparam1).jump(3,1) -> zero
+    10 -> transfer(_Gparam1).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gparam1).jump(0,2)
+NAME: transfer(_Gparam1).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gparam1).jump(3,1)
+NAME: transfer(_Gparam1).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gaxiomcode)
+NAME: transfer(_Gt2,_Gaxiomcode) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_Gt2) #again
+    01 -> transfer(_Gt2,_Gaxiomcode).jump(4,2) -> zero
+    10 -> reg_incr(_Gaxiomcode)
+    11 -> transfer(_Gt2,_Gaxiomcode).jump(0,2) -> again
+
+transfer(_Gt2,_Gaxiomcode).jump(0,2)
+NAME: transfer(_Gt2,_Gaxiomcode).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gt2,_Gaxiomcode).jump(4,2)
+NAME: transfer(_Gt2,_Gaxiomcode).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gaxiomcode)
+NAME: transfer(_Gaxiomcode) ORDER: 2 EFFICIENCY: 3 / 4
+    00 -> reg_decr(_Gaxiomcode) #again
+    01 -> transfer(_Gaxiomcode).jump(3,1) -> zero
+    10 -> transfer(_Gaxiomcode).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+transfer(_Gaxiomcode).jump(0,2)
+NAME: transfer(_Gaxiomcode).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gaxiomcode).jump(3,1)
+NAME: transfer(_Gaxiomcode).jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_incr(_Gnextproof)
+NAME: reg_incr(_Gnextproof) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gnextproof)
+NAME: transfer(_scratch_1,_Gnextproof) ORDER: 2 EFFICIENCY: 4 / 4
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gnextproof).jump(4,2) -> zero
+    10 -> reg_incr(_Gnextproof)
+    11 -> transfer(_scratch_1,_Gnextproof).jump(0,2) -> again
+
+transfer(_scratch_1,_Gnextproof).jump(0,2)
+NAME: transfer(_scratch_1,_Gnextproof).jump(0,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_scratch_1,_Gnextproof).jump(4,2)
+NAME: transfer(_scratch_1,_Gnextproof).jump(4,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gnextproof,_Gprooflist,_scratch_1)
+NAME: transfer(_Gnextproof,_Gprooflist,_scratch_1) ORDER: 3 EFFICIENCY: 5 / 8
+    000 -> reg_decr(_Gnextproof) #again
+    001 -> transfer(_Gnextproof,_Gprooflist,_scratch_1).jump(5,2) -> zero
+    010 -> reg_incr(_Gprooflist)
+    011 -> reg_incr(_scratch_1)
+    100 -> transfer(_Gnextproof,_Gprooflist,_scratch_1).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+transfer(_Gnextproof,_Gprooflist,_scratch_1).jump(0,3)
+NAME: transfer(_Gnextproof,_Gprooflist,_scratch_1).jump(0,3) ORDER: 0 EFFICIENCY: 1 / 1
+
+transfer(_Gnextproof,_Gprooflist,_scratch_1).jump(5,2)
+NAME: transfer(_Gnextproof,_Gprooflist,_scratch_1).jump(5,2) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_decr(_Gnextproof)
+NAME: reg_decr(_Gnextproof) ORDER: 0 EFFICIENCY: 1 / 1
+
+main().jump(3,1)
+NAME: main().jump(3,1) ORDER: 0 EFFICIENCY: 1 / 1
+
+reg_init
+NAME: reg_init ORDER: 0 EFFICIENCY: 1 / 1

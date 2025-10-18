@@ -1,0 +1,240 @@
+/*
+Haskell code:
+data Term = Lam Term | App Term Term | Var Int
+type Env = [Value]
+data Value = Closure Env Term | Reflect
+
+eval :: Term -> Env -> Value
+eval e (Lam x) = Closure e x
+eval e (App f x) = vapp (eval e f) (eval e x)
+eval e (Var n) = e !! n
+
+vapp :: Value -> Value -> Value
+vapp Reflect !_ = Reflect
+vapp (Closure e t) v = eval (v:e) t
+
+quote :: Value -> ()
+quote Reflect = ()
+quote (Closure e t) = eval (Reflect:e) t
+
+Data representations:
+Lam t = (0,t)
+App f x = (1,(f,x))
+Var n = (2,n)
+[] :: Env = 0
+(x:xs) :: Env = (x,xs) (overlaps [] but that's fine)
+Reflect = 0
+Closure e t = (e,t)+1
+
+Program stack entries (input lstacktop->output lstacktop):
+0 = x -> quote x (and exit if x==0==Reflect)
+(0,e)+1 = t -> eval e t
+(1,(e,x))+1 = f -> vapp f (eval e x)
+(2,(e,t))+1 = x -> vapp (Closure e t) x
+(3,_)+1 = x -> Reflect
+
+Reductions (lstacktop # rstacktop rstack...):
+Reflect # 0 -> halt
+(Closure e t) # 0 -> Reflect # (2,(e,t))+1 (-> t # (0,(0,e))+1)
+(Lam t) # (0,e)+1 -> (Closure e t) #
+(App f x) # (0,e)+1 -> f # (0,e)+1 (1,(e,x))+1
+(Var n) # (0,e)+1 -> e!!n #
+Reflect # (1,(e,x))+1 -> x # (0,e)+1 (3,_)+1
+(Closure e t) # (1,(e',x))+1 -> x # (0,e')+1 (2,(e,t))+1
+x # (2,(e,t))+1 -> t # (0,(x,e))+1
+x # (3,_)+1 -> Reflect #
+*/
+
+/* Cantor pair manipulation proctions */
+/* zeros in1, in2 */
+proc pair(out, in1, in2) {
+    builtin_pair(out, in1, in2);
+}
+
+proc pair_inc(out, in1, in2) {
+    builtin_pair(out, in1, in2);
+    out = out + 1;
+}
+
+/* zeros in */
+proc unpair(out1, out2, in) {
+    builtin_unpair(out1, out2, in);
+}
+proc unpair_dec(out1, out2, in) {
+    in = in - 1;
+    unpair(out1, out2, in);
+}
+
+global lstacktop;
+global rstack;
+global rstacktop;
+global t2;
+global t3;
+
+/* Stack manipulation */
+proc rstack_push() {
+    pair(rstack, rstack, rstacktop);
+}
+
+proc rstack_pop() {
+    unpair(rstack, rstacktop, rstack);
+}
+
+/* Constructors for Term */
+proc push_lam() {
+    t2 = 0;
+    pair(rstacktop, t2, rstacktop);
+}
+
+/* rstack=((...,x),f)->(...,App f x) */
+proc push_app() {
+    t2 = rstacktop;
+    rstack_pop();
+    pair(rstacktop, t2, rstacktop);
+    t2 = t2 + 1;
+    pair(rstacktop, t2, rstacktop);
+}
+
+proc push_var(v) {
+    rstack_push();
+    rstacktop = 2;
+    pair(rstacktop, rstacktop, v);
+}
+
+/* e !! n, all operands distinct */
+proc index_list(e, n, out) {
+    /* decz n = (n-- == 0) */
+    while(!decz n){
+        unpair(out, e, e);
+    }
+    unpair(out, e, e);
+}
+
+/* t2 is 0 after this only at the beginning or the end */
+proc stackszero() {
+    t2 = 0;
+    if(lstacktop > 0){
+        t2 = t2 + 1;
+    }
+    if(rstacktop > 0){
+        t2 = t2 + 1;
+    }
+}
+
+proc main() {
+    /* first iteration? */
+    stackszero();
+    if(t2 == 0){
+        /* push the program */
+        push_var(t2); push_var(t2); push_var(t2); push_var(t2); align_8(); t2 = t2 + 1; push_var(t2); align_8(); align_10(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_var(t2); push_app(); align_10(); push_app(); push_lam(); push_lam(); push_app(); push_app(); push_app(); push_app(); push_lam(); push_var(t2); push_var(t2); push_app(); push_lam(); align_10(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); align_8(); push_var(t2); push_lam(); align_8(); push_app(); align_10(); align_8(); t2 = t2 + 2; push_var(t2); align_8(); align_8(); t2 = t2 + 2; push_var(t2); align_8(); push_app(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); t2 = t2 + 6; push_var(t2); push_app(); push_var(t2); push_app(); align_8(); t2 = t2 + 4; push_var(t2); align_8(); align_8(); t2 = t2 + 2; push_var(t2); align_8(); align_8(); t2 = t2 + 7; push_var(t2); align_8(); push_app(); align_8(); t2 = t2 + 8; push_var(t2); align_8(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_app(); push_app(); push_app(); push_lam(); push_app(); push_var(t2); align_8(); t2 = t2 + 2; push_var(t2); align_8(); align_8(); t2 = t2 + 8; push_var(t2); align_8(); push_app(); align_8(); t2 = t2 + 3; push_var(t2); align_8(); push_app(); align_8(); t2 = t2 + 7; push_var(t2); align_8(); push_app(); push_var(t2); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_app(); push_app(); align_8(); t2 = t2 + 3; push_var(t2); align_8(); push_lam(); push_app(); align_9(); align_8(); push_var(t2); push_lam(); align_8(); push_lam(); align_9(); push_app(); push_app(); push_lam(); align_8(); t2 = t2 + 3; push_var(t2); align_8(); align_8(); t2 = t2 + 7; push_var(t2); align_8(); push_var(t2); push_app(); push_app(); align_8(); t2 = t2 + 7; push_var(t2); align_8(); push_app(); push_app(); push_app(); push_lam(); push_lam(); align_10(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); align_8(); push_var(t2); push_lam(); align_8(); push_app(); align_10(); push_app(); push_app(); align_8(); t2 = t2 + 4; push_var(t2); align_8(); push_var(t2); align_9(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_lam(); align_9(); push_app(); align_8(); t2 = t2 + 3; push_var(t2); align_8(); push_app(); push_app(); push_app(); push_app(); align_8(); t2 = t2 + 3; push_var(t2); align_8(); push_app(); push_lam(); push_lam(); push_lam(); push_app(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_app(); align_8(); t2 = t2 + 2; push_var(t2); align_8(); push_app(); push_var(t2); push_app(); align_9(); align_8(); push_var(t2); push_lam(); align_8(); push_lam(); align_9(); push_lam(); push_app(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_app(); push_lam(); push_app(); align_10(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_var(t2); push_app(); align_10(); push_app(); push_lam(); push_lam(); align_8(); t2 = t2 + 2; push_var(t2); align_8(); push_var(t2); align_8(); t2 = t2 + 1; push_var(t2); align_8(); align_8(); t2 = t2 + 3; push_var(t2); align_8(); push_app(); push_app(); push_lam(); push_lam(); push_app(); align_9(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_lam(); align_9(); push_app(); align_8(); push_var(t2); push_lam(); align_8(); push_app(); push_lam(); push_lam(); push_lam(); push_app(); push_lam(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); align_8(); t2 = t2 + 2; push_var(t2); align_8(); align_8(); t2 = t2 + 1; push_var(t2); align_8(); push_app(); push_var(t2); push_app(); push_app(); push_lam(); push_lam(); push_lam(); push_app(); push_app();
+        builtin_move(lstacktop, rstacktop);
+        /* 1 = (0,0)+1 = eval [] */
+        rstacktop = rstacktop + 1;
+    }
+    /* apply a reduction */
+    if(decz rstacktop){
+        /* 0 = quote */
+        if(!decz lstacktop){
+            /* (Closure e t) # 0 -> Reflect # (2,(e,t))+1 */
+            /* lstacktop = (e,t) */
+            t2 = 2;
+            pair_inc(rstacktop, t2, lstacktop);
+            /* lstacktop = 0 */
+        }
+        /* Reflect # 0 -> halt is handled elsewhere */
+    }else{
+        unpair(t2, rstacktop, rstacktop);
+        switch(t2){
+        case 0:
+            /* 0 = eval */
+            unpair(t2, lstacktop, lstacktop);
+            switch(t2){
+            case 0:
+                /* (Lam t) # (0,e)+1 -> (Closure e t) # */
+                /* lstacktop = t, rstacktop = e */
+                pair_inc(lstacktop, rstacktop, lstacktop);
+                /* lstacktop = (e,t)+1 = (Closure e t) */
+                rstack_pop();
+                break;
+            case 1:
+                /* (App f x) # (0,e)+1 -> f # (0,e)+1 (1,(e,x))+1 */
+                /* lstacktop = (f,x), rstacktop = e */
+                unpair(lstacktop, t2, lstacktop);
+                /* lstacktop = f, t2 = x */
+                t3 = rstacktop;
+                pair(t2, t3, t2);
+                /* t2 = (e,x) */
+                t3 = 1;
+                pair_inc(t2, t3, t2);
+                pair(rstack, rstack, t2);
+                /* rstack = (1,(e,x))+1 ... */
+                /* t2 = 0 */
+                pair_inc(rstacktop, t2, rstacktop);
+                /* rstacktop = (0,e)+1 */
+                break;
+            default:
+                /* (Var n) # (0,e)+1 -> e!!n # */
+                /* lstacktop = n, rstacktop = e */
+                builtin_move(t2, lstacktop);
+                index_list(rstacktop, t2, lstacktop);
+                /* lstacktop = e !! n */
+                rstack_pop();
+                break;
+            }
+            break;
+        case 1:
+            /* 1 = vapp eval */
+            if(decz lstacktop){
+                /* Reflect # (1,(e,x))+1 -> x # (0,e)+1 (3,_)+1 */
+                /* lstacktop = 0, rstacktop = (e,x) */
+                unpair(rstacktop, lstacktop, rstacktop);
+                /* lstacktop = x, rstacktop = e */
+                /* t2 = 1 */
+                t2 = t2 + 9;
+                /* t2 = (3,0)+1 */
+                pair(rstack, rstack, t2);
+                /* rstack = (3,0)+1 ... */
+                /* t2 = 0 */
+                pair_inc(rstacktop, t2, rstacktop);
+                /* rstacktop = (0,e)+1 */
+            }else{
+                /* (Closure e t) # (1,(e',x))+1 -> x # (0,e')+1 (2,(e,t))+1 */
+                /* lstacktop = (e,t), rstacktop = (e',x) */
+                t2 = 2;
+                pair_inc(t2, t2, lstacktop);
+                /* t2 = (2,(e,t))+1 */
+                pair(rstack, rstack, t2);
+                /* rstack = (2,(e,t))+1 ... */
+                /* t2 = 0 */
+                unpair(rstacktop, lstacktop, rstacktop);
+                /* lstacktop = x, rstacktop = e' */
+                pair_inc(rstacktop, t2, rstacktop);
+                /* rstacktop = (0,e')+1 */
+            }
+            break;
+        case 2:
+            /* 2 = vapp Closure */
+            /* x # (2,(e,t))+1 -> t # (0,(x,e))+1 */
+            /* lstacktop = x, rstacktop = (e,t) */
+            builtin_move(t2, lstacktop);
+            /* t2 = x */
+            unpair(rstacktop, lstacktop, rstacktop);
+            /* lstacktop = t, rstacktop = e */
+            pair(rstacktop, t2, rstacktop);
+            /* rstacktop = (x,e) */
+            /* t2 = 0 */
+            pair_inc(rstacktop, t2, rstacktop);
+            /* rstacktop = (0,(x,e))+1 */
+            break;
+        default:
+            /* 3 = const Reflect */
+            lstacktop = 0;
+            break;
+        }
+    }
+    /* done? */
+    stackszero();
+    if(t2 == 0){
+        return;
+    }
+}
