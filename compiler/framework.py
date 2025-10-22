@@ -209,10 +209,12 @@ def cfg_optimizer(parts):
     return tuple(p for p in parts if p)
 
 class MachineOptions:
-    boolean = ("relative_jumps", "no_cfg_optimize", "dont_compress")
+    boolean = ("relative_jumps", "no_cfg_optimize", "dont_compress", "implicit_halt", "no_sort_transfers")
     relative_jumps = False
     no_cfg_optimize = False
     dont_compress = False
+    implicit_halt = False
+    no_sort_transfers = False
 
 class MachineBuilder:
     """Subclassable class of utilities for constructing Turing machines using
@@ -506,12 +508,14 @@ class MachineBuilder:
         """Subprogram which moves values between registers.
 
         The source register will be cleared, and its value will be added to each to register."""
-        name = 'transfer(' + ','.join([source.name] + [x.name for x in sorted(to)]) + ')'
+        if not self.options.no_sort_transfers:
+            to = sorted(to)
+        name = 'transfer(' + ','.join([source.name] + [x.name for x in to]) + ')'
         return self.makesub(
             Label('again'),
             source.dec,
             Goto('zero'),
-            *([tox.inc for tox in sorted(to)] + [
+            *([tox.inc for tox in to] + [
                 Goto('again'),
                 Label('zero'),
             ]),

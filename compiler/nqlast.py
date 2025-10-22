@@ -587,7 +587,7 @@ class SubEmitter:
         self._output.append(Goto(label))
 
     def emit_return(self):
-        if self.name == 'main':
+        if self.name == 'main' and not self._machine_builder.options.implicit_halt:
             self.emit_halt()
             return
         if not self._return_label:
@@ -701,8 +701,9 @@ class AstMachine(MachineBuilder):
         assert isinstance(defn, ProcDef)
         emit = SubEmitter(dict(zip(defn.parameters, args)), self, name)
         defn.children[0].emit_stmt(emit)
-        if name != 'main':
-            emit.close_return()
+        emit.close_return()
+        if name == 'main' and self.options.implicit_halt:
+            emit.emit_halt()
         return self.makesub(name=name + '(' + ','.join(args) + ')', *emit._output)
 
     def main(self):
