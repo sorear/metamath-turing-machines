@@ -1,3 +1,5 @@
+option no_sort_transfers;
+option implicit_halt;
 /* Computes x += 1 */
 proc incr(x) {
     x = x + 1;
@@ -199,5 +201,4 @@ proc main() {
         r(x, deltaXFac, aOfX, bOfX, h2, lOfX, rOfX);
         l(aOfX, bOfX, h2, lOfX);
     }
-    return;
 }
