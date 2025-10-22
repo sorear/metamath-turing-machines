@@ -1,0 +1,332 @@
+option implicit_halt;
+option no_sort_transfers;
+option no_cfg_optimize;
+/* Cantor pair manipulation proctions */
+/* t0 and t1 clobbered by pairing, also use t0 as blackhole a la MIPS */
+global t0;
+global t1;
+
+proc pair(out, in1, in2) {
+    t0 = in1 + in2;
+    out = (t0 * (t0 + 1)) / 2 + in2;
+}
+
+proc unpair(out1, out2, in) {
+    t0 = 0;
+    while (2 * in >= t0 * (t0 + 1)) {
+        t0 = t0 + 1;
+    }
+    t0 = t0 - 1;
+    t1 = in - (t0 * (t0 + 1)) / 2;
+    out2 = t1;
+    out1 = t0 - t1;
+}
+
+proc push(stack, var) { pair(stack, var, stack); }
+proc pop(var, stack) { unpair(var, stack, stack); }
+
+/* Wff construction routines */
+/* wstack is a cons-list of wffs, proof nodes, or variable names */
+/* proof is the current node in the claimed proof */
+/* valid is set to zero when the verifier discovers an error */
+global wstack;
+global proof;
+global valid;
+global t2;
+global t3;
+global t4;
+global t5;
+
+/* metavariable routines, push a value from the proof node */
+proc gproof() {
+    push(wstack, proof);
+}
+proc car() {
+    pop(t2, wstack);
+    unpair(t2, t0, t2);
+    push(wstack, t2);
+}
+proc cdr() {
+    pop(t2, wstack);
+    unpair(t0, t2, t2);
+    push(wstack, t2);
+}
+proc cddr() { cdr(); cdr(); }
+proc cadr() { cdr(); car(); }
+/* our axioms need 4 metavariables */
+proc vA() { gproof(); cadr(); }
+proc vB() { gproof(); cdr(); cadr(); }
+proc vC() { gproof(); cddr(); cadr(); }
+proc vD() { gproof(); cddr(); cdr(); cadr(); }
+
+/* check that two (set!) variables are distinct */
+proc isne() {
+    pop(t2, wstack);
+    pop(t3, wstack);
+    if (t2 == t3) {
+        valid = 0;
+    }
+}
+
+/* equality check, use this after verify() to be sure of what was proved */
+proc iseq() {
+    pop(t2, wstack);
+    pop(t3, wstack);
+    if (t2 != t3) {
+        valid = 0;
+    }
+}
+
+/* wff codes:
+   (1, (|ph|, |ps|)) = ( ph -> ps )
+   (2, (|ph, |ph|)) = -. ph
+   (3, (|ph|, |x|)) = A. x ph
+   (4, (|x|, |y|)) = x = y
+   (5, (|x|, |y|)) = x e. y */
+
+proc triple() {
+    pop(t2, wstack); /* 2nd part */
+    pop(t3, wstack); /* 1st part */
+    pair(t2, t3, t2);
+    pair(t2, t4, t2);
+    push(wstack, t2);
+}
+
+proc wal() {
+    t4 = 3;
+    triple();
+}
+
+proc wn() {
+    unpair(t4, t0, wstack);
+    push(wstack, t4);
+    t4 = 2;
+    triple();
+}
+
+proc wi() {
+    t4 = 1;
+    triple();
+}
+
+proc weq() {
+    t4 = 4;
+    triple();
+}
+
+proc wel() {
+    t4 = 5;
+    triple();
+}
+
+/* checks that set x does not appear in wff ph.
+   used only by ax-17 and is not strictly needed, but saves a few axioms(?)
+   IN (x ph) OUT () */
+global var_not_used_count;
+proc var_not_used() {
+    pop(t3, wstack);
+    pop(t2, wstack);
+    unpair(t3, t4, t3);
+    unpair(t4, t5, t4);
+    /* t2=x t3=ph.opcode t4=ph.left t5=ph.right */
+    if ((t2 == t5) && (t3 >= 3)) { valid = 0; }
+    if ((t2 == t4) && (t3 >= 4)) { valid = 0; }
+    if (t3 == 1) {
+        push(wstack, t2);
+        push(wstack, t4);
+        push(wstack, t2);
+        push(wstack, t5);
+        var_not_used_count = var_not_used_count + 2;
+    } elsif (t3 < 4) {
+        push(wstack, t2);
+        push(wstack, t4);
+        var_not_used_count = var_not_used_count + 1;
+    }
+    var_not_used_count = var_not_used_count - 1;
+}
+
+/* abbreviations */
+global t6;
+global t7;
+
+proc wex() { /* E. x ph == -. A. x -. ph */
+    pop(t6,wstack);
+    wn();
+    push(wstack,t6);
+    wal();
+    wn();
+}
+
+proc wa() { /* ( ph /\ ps ) == -. ( ph -> -. ps ) */
+    wn();
+    wi();
+    wn();
+}
+
+proc wb() { /* ( ph <-> ps ) == ( ( ph -> ps ) /\ ( ps -> ph ) ) */
+    unpair(t6, t7, wstack); /* t6=tos=ps */
+    unpair(t7, t0, t7); /* t7=ntos=ph */
+    wi();
+    pair(wstack, t7, wstack);
+    pair(wstack, t6, wstack);
+    wi();
+    wa();
+}
+
+/* verifier */
+
+global verify_count;
+proc verify() {
+    /* wstack in: proof  stack out: wff that was proved, may set valid=0 */
+    /* get the opcode/axiom number */
+    pop(proof, wstack);
+    unpair(t2, t0, proof);
+
+    /* axioms from:
+       http://us.metamath.org/mpegif/mmset.html
+       http://us.metamath.org/mpegif/mmzfcnd.html
+       I've omitted Regularity and Choice because they don't affect logical power. */
+    /* re-added Regularity per metamath-list discussion, until someone gets me an axinf2nd */
+    /* mostly generated with https://github.com/sorear/smm/blob/master/misc/prglobalparse.js */
+
+    switch (t2) {
+    case 1:
+        /* axiom of modus ponens
+           A: ph
+           B: ps
+           C: proof of ( ph -> ps )
+           D: proof of ph
+           => ps
+           */
+        /* doing this in a weird order so that we don't reference "proof" after the recursive call */
+        vA(); vD(); /* verify(); iseq(); */ verify_count = verify_count + 1;
+        vA(); vB(); wi(); vC(); /* verify(); iseq(); */ verify_count = verify_count + 1;
+        vB();
+        break;
+    case 2:
+        /* axiom of generalization
+           A: ph  B: x  C: proof(ph) => A. x ph */
+        vA(); vC(); /* verify(); iseq(); */ verify_count = verify_count + 1;
+        vA(); vB(); wal();
+
+        /* from here on are true axioms, which do not use verify() */
+        /* set variables and wff variables are assigned to metavariables in that order */
+        break;
+    case 3:
+        /* ax-1: ( ph -> ( ps -> ph ) ) */
+        vA(); vB(); vA(); wi(); wi();
+        break;
+    case 4:
+        /* ax-2: ( ( ph -> ( ps -> ch ) ) -> ( ( ph -> ps ) -> ( ph -> ch ) ) ) */
+        vA(); vB(); vC(); wi(); wi(); vA(); vB(); wi(); vA(); vC(); wi(); wi(); wi();
+        break;
+    case 5:
+        /* ax-3: ( ( -. ph -> -. ps ) -> ( ps -> ph ) ) */
+        vA(); wn(); vB(); wn(); wi(); vB(); vA(); wi(); wi();
+        break;
+    case 6:
+        /* ax-5: (A. x (ph -> ps) -> (A. x ph -> A. x ps)) */
+        vA(); vB(); wi(); vC(); wal(); vA(); vC(); wal(); vB(); vC(); wal(); wi(); wi();
+        break;
+    case 7:
+        /* ax-6: (-. A. x ph -> A. x  -. A. x ph) */
+        vA(); vB(); wal(); wn(); vA(); vB(); wal(); wn(); vB(); wal(); wi();
+        break;
+    case 8:
+        /* ax-7: (A. x A. y ph -> A. y A. x ph) */
+        vA(); vB(); wal(); vC(); wal(); vA(); vC(); wal(); vB(); wal(); wi();
+        break;
+    case 9:
+        /* ax-8: (x  = y  -> (x  = z -> y  = z)) */
+        vA(); vB(); weq(); vA(); vC(); weq(); vB(); vC(); weq(); wi(); wi();
+        break;
+    case 10:
+        /* ax-9: -. A. x  -. x  = y  */
+        vA(); vB(); weq(); wn(); vA(); wal(); wn();
+        break;
+    case 11:
+        /* ax-11: (x  = y  -> (A. y ph -> A. x (x  = y  -> ph))) */
+        vA(); vB(); weq(); vC(); vB(); wal(); vA(); vB(); weq(); vC(); wi(); vA(); wal(); wi(); wi();
+        break;
+    case 12:
+        /* ax-12: (-. x  = y  -> (y  = z -> A. x  y  = z)) */
+        vA(); vB(); weq(); wn(); vB(); vC(); weq(); vB(); vC(); weq(); vA(); wal(); wi(); wi();
+        break;
+    case 13:
+        /* ax-13: (x  = y  -> (x  e. z -> y  e. z)) */
+        vA(); vB(); weq(); vA(); vC(); wel(); vB(); vC(); wel(); wi(); wi();
+        break;
+    case 14:
+        /* ax-14: (x  = y  -> (z e. x  -> z e. y )) */
+        vA(); vB(); weq(); vC(); vA(); wel(); vC(); vB(); wel(); wi(); wi();
+        break;
+    case 15:
+        /* ax-17: (ph -> A. x ph) */
+        vB(); vA();
+        var_not_used_count = 1;
+        while (var_not_used_count > 0) { var_not_used(); }
+        vA(); vA(); vB(); wal(); wi();
+        break;
+    case 16:
+        /* axextnd: E. x ((x  e. y  <-> x  e. z) -> y  = z) */
+        vA(); vB(); wel(); vA(); vC(); wel(); wb(); vB(); vC(); weq(); wi(); vA(); wex();
+        break;
+    case 17:
+        /* axrepnd: E. x (E. y A. z(ph -> z = y ) -> A. z(A. y  z e. x  <-> E. x (A. z x  e. y  /\ A. y ph))) */
+        vA(); vB(); vC(); weq(); wi(); vB(); wal(); vC(); wex(); vB(); vD(); wel(); vC(); wal();
+        vD(); vC(); wel(); vB(); wal(); vA(); vC(); wal(); wa(); vD(); wex(); wb(); vB(); wal(); wi(); vD(); wex();
+        break;
+    case 18:
+        /* axpownd: (-. x  = y  -> E. x A. y (A. x (E. z x  e. y  -> A. y  x  e. z) -> y  e. x )) */
+        vA(); vB(); weq(); wn(); vA(); vB(); wel(); vC(); wex(); vA(); vC(); wel();
+        vB(); wal(); wi(); vA(); wal(); vB(); vA(); wel(); wi(); vB(); wal(); vA(); wex(); wi();
+        break;
+    case 19:
+        /* axunnd: E. x A. y (E. x (y  e. x  /\ x  e. z) -> y  e. x ) */
+        vA(); vB(); wel(); vB(); vC(); wel(); wa(); vB(); wex(); vA(); vB(); wel(); wi(); vA(); wal(); vB(); wex();
+        break;
+    case 20:
+        /* axregnd: ( x e. y -> E. x ( x e. y /\ A. z ( z e. x -> -. z e. y ) ) ) */
+        vA(); vB(); wel(); vA(); vB(); wel(); vC(); vA(); wel(); vC(); vB(); wel(); wn(); wi(); vC(); wal(); wa(); vA(); wex(); wi();
+        break;
+    case 21:
+        /* axinfnd: E. x (y  e. z -> (y  e. x  /\ A. y (y  e. x  -> E. z(y  e. z /\ z e. x )))) */
+        vA(); vB(); wel(); vA(); vC(); wel(); vA(); vC(); wel(); vA(); vB(); wel(); vB(); vC(); wel();
+        wa(); vB(); wex(); wi(); vA(); wal(); wa(); wi(); vC(); wex();
+        break;
+    case 22:
+        /* dtru: -. A. x  x  = y  */
+        vA(); vB(); isne();
+        vA(); vB(); weq(); vA(); wal(); wn();
+        break;
+    default:
+        valid = 0;
+        break;
+    }
+    iseq();
+}
+
+global nextproof;
+
+proc main() {
+    valid = 0;
+
+    while (valid == 0) {
+        valid = 1;
+        wstack = 0;
+        t2 = 1;
+        push(wstack, t2);
+        push(wstack, t2);
+        weq();
+        wn();
+        /* we just pushed -. v0 = v0 , which should not be provable */
+        push(wstack, nextproof);
+        verify_count = 1;
+        while (verify_count > 0) {
+            verify_count = verify_count - 1;
+            verify();
+        }
+        nextproof = nextproof + 1;
+        /* if we're valid here, we found a contradiction in ZF */
+    }
+}
