@@ -1,3 +1,6 @@
+option implicit_halt;
+option no_sort_transfers;
+option no_cfg_optimize;
 /* Cantor pair manipulation proctions */
 /* t0 and t1 clobbered by pairing, also use t0 as blackhole a la MIPS */
 global t0;
