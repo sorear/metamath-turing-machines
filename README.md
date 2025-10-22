@@ -1,3 +1,63 @@
+# Directory structure
+
+Subdirectories of `machines/` contain specific machine constructions intended
+to be reproducible. Each subdirectory contains a single .nql file and a single
+.tm which represents the actual machine. After being committed, a machine will
+not change up to isomorphism. Submissions of new machines is encouraged if they
+address new "sufficiently interesting" problems or are smaller than existing
+machines for the same problem. An optimized version of an existing machine is a
+new machine and requires a new subdirectory.
+
+No attempt is currently made to track pre-2017 compiler versions, so machines
+existing in 2017 are dated 2017 to reflect use of the 2017 compiler.
+
+`doc/` contains explanatory material (TBD) describing the construction of
+Turing machines and the behavior of the machines in `machines/`. Documentation
+in the machine subdirectory will generally be limited to referencing the
+combined machine construction document. Documentation updates are strongly
+encouraged for any new machine and the compiler features it uses.
+
+`compiler/` holds a Python program which generates the Turing machines in this
+repository, under guidance from their corresponding .nql files. Compilation of
+the .nql for a committed machine shall exactly reproduce the corresponding .tm.
+Compiler changes which cause committed machines to generate non-isomorphic
+Turing machines are not permissible. Changes which result in isomorphic textual
+changes are discouraged but permissible in exceptional cases. Compiler
+improvements have been a major driver of state count reductions and continued
+improvements are encouraged, but for reproducibility they must be "opted into"
+by some mechanism in the .nql file.
+
+There is a single compiler in the repository for reasons of maintainer
+convenience. There is no fundamental distinction between the .nql and .py
+inputs, and changes to the "compiler" are considered to have equal status to
+changes to the "inputs". If compilation strategies diverge too much it may be
+necessary to have multiple separate compilers, but this will complicate
+development and testing. Reproducibility will require identifying the compiler
+used to reproduce each individual machine.
+
+`misc/` contains test and maintenance code which does not contribute to a
+stable machine in `machines/`. Develop stuff here before moving it to
+`machines/` when it is stable and documented.
+
+This file contains information for running the NQL compiler and maintaining the
+repository.
+
+# Compiler changes through 2017
+
+    530d545 2017-08-07 Main functions are automatically looped
+    815b8a8 2017-08-07 Purely additive, builtins and alignment mechanism
+    70064e1 2017-08-06 Transfer functions are sorted
+      riemann-matiyasevich-aaronson added here
+      pjt33's zf added here
+    cc993b3 2016-05-17 Purely additive, true/false
+      pjt33's riemann improvements
+    all prior machines are sorear so detailed analysis not needed
+
+#
+
+(Remainder of this file needs a rewrite to address current needs rather than
+people already familiar with Laconic in 2016)
+
 # What is NQL?
 
 Not-Quite-Laconic is a language and compiler for generating Turing machines with small state counts.
@@ -74,3 +134,7 @@ Built-in Turing machine executor:
  * ZF: combine all non-propositional axioms into a giant conjunction to save on control flow (WIP, 50%)
 
  * ZF: Rewrite pair and unpair to use fewer multiplications and divisions (1 hour, 15%)
+
+# On claims
+
+reproducibility of specific version
