@@ -1,0 +1,7 @@
+set -e
+for d in machines/*
+do
+    echo $d
+    python compiler/nqlaconic.py --print-tm $d/*.nql | cmp - $d/*.tm
+    python compiler/nqlaconic.py --print-subs $d/*.nql | cmp - $d/*.subs
+done
