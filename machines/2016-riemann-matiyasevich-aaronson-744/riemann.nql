@@ -1,3 +1,5 @@
+option implicit_halt;
+option no_sort_transfers;
 /* sent to me via e-mail from Yuri Matiyasevich and Scott Aaronson */
 
 global x;
