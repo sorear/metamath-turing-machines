@@ -208,6 +208,12 @@ def cfg_optimizer(parts):
 
     return tuple(p for p in parts if p)
 
+class MachineOptions:
+    boolean = ("relative_jumps", "no_cfg_optimize", "dont_compress")
+    relative_jumps = False
+    no_cfg_optimize = False
+    dont_compress = False
+
 class MachineBuilder:
     """Subclassable class of utilities for constructing Turing machines using
     BDD-compressed register machines."""
@@ -220,10 +226,10 @@ class MachineBuilder:
     # Quick=4: as Quick=3 except subroutines can cheat
     # Quick=5: subroutines can cheat to the extent of storing non-integers
 
-    def __init__(self, control_args):
+    def __init__(self, options):
         self._nextreg = 0
         self._memos = {}
-        self.control_args = control_args
+        self.options = options
 
     # leaf procs which implement register machine operations
     # on entry to a leaf proc the tape head is just after the PC
@@ -392,7 +398,7 @@ class MachineBuilder:
         real_parts = []
         offset = 0
 
-        if not self.control_args.no_cfg_optimize:
+        if not self.options.no_cfg_optimize:
             parts = cfg_optimizer(parts)
 
         if name == 'main()':
@@ -455,7 +461,7 @@ class MachineBuilder:
             if isinstance(part, Goto):
                 assert part.name in label_offsets
                 target = label_offsets[part.name]
-                if self.control_args.relative_jumps:
+                if self.options.relative_jumps:
                     part = self.rjump(target - offset)
                 else:
                     part = None
@@ -536,7 +542,7 @@ class Machine:
     def harness(self, args):
         """Processes command line arguments and runs the test harness for a machine."""
 
-        if not args.dont_compress:
+        if not self.builder.options.dont_compress:
             self.compress()
 
         if args.print_subs:

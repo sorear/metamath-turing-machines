@@ -1,7 +1,7 @@
 """Implements an EDSL for constructing Turing machines without subclassing
 MachineBuilder."""
 
-from framework import Machine, MachineBuilder, Goto, Label, memo
+from framework import Machine, MachineOptions, MachineBuilder, Goto, Label, memo
 
 class Node:
     """Base class for all Not Quite Laconic syntax nodes."""
@@ -533,6 +533,11 @@ class ProcDef(GlobalNode):
 
     child_types = (VoidExpr,)
 
+class Option(GlobalNode):
+    def __init__(self, **kwargs):
+        self.name = kwargs.pop('name')
+        super().__init__(**kwargs)
+
 class GlobalReg(GlobalNode):
     def __init__(self, **kwargs):
         self.name = kwargs.pop('name')
@@ -540,10 +545,17 @@ class GlobalReg(GlobalNode):
 
 class Program(Node):
     child_types = GlobalNode
-    repr_suppress = Node.repr_suppress + ('by_name',)
+    repr_suppress = Node.repr_suppress + ('by_name', 'options',)
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.by_name = {node.name: node for node in self.children}
+        self.by_name = {node.name: node for node in self.children if isinstance(node,ProcDef)}
+        self.options = MachineOptions()
+        for node in self.children:
+            if isinstance(node,Option):
+                if node.name in MachineOptions.boolean:
+                    setattr(self.options, node.name, True)
+                else:
+                    raise Exception("unknown option", node.name, self.lineno)
 
 class SubEmitter:
     """Tracks state while lowering a _SubDef to a call sequence."""
@@ -677,8 +689,8 @@ class SubEmitter:
         return 'gen' + str(self._machine_builder._gensym)
 
 class AstMachine(MachineBuilder):
-    def __init__(self, ast, control_args):
-        super().__init__(control_args)
+    def __init__(self, ast):
+        super().__init__(ast.options)
         self._ast = ast
         self._fun_instances = {}
         self._gensym = 0
@@ -697,9 +709,9 @@ class AstMachine(MachineBuilder):
         return self.instantiate('main', ())
 
 def harness(ast, args):
-    mach1 = AstMachine(ast, args)
+    mach1 = AstMachine(ast)
     mach1.pc_bits = 50
     order = mach1.main().order
-    mach2 = AstMachine(ast, args)
+    mach2 = AstMachine(ast)
     mach2.pc_bits = order
     Machine(mach2).harness(args)

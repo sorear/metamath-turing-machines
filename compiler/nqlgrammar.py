@@ -7,7 +7,7 @@ def _grammar():
 
     integer_ = pp.Word(pp.nums).setName('integer').setParseAction(lambda t: int(t[0]))
     reserved_words = {'while', 'proc', 'global', 'if', 'return', 'else', 'elsif', 'switch',
-                      'case', 'break', 'default', 'true', 'false'}
+                      'case', 'break', 'default', 'true', 'false', 'option'}
     identifier_ = pp.Word(pp.alphas, pp.alphanums + '_') \
         .addCondition((lambda t: t[0] not in reserved_words), \
             message='reserved word').setName('identifier')
@@ -25,6 +25,7 @@ def _grammar():
     break_ = pp.Keyword('break')
     true_ = pp.Keyword('true')
     false_ = pp.Keyword('false')
+    option_ = pp.Keyword('option')
     lt_ = pp.Literal('<') + ~pp.Literal('=')
     gt_ = pp.Literal('>') + ~pp.Literal('=')
     le_ = pp.Literal('<=')
@@ -157,7 +158,8 @@ def _grammar():
 
     procdef = (proc_ - identifier_ - arglist - block).setParseAction(a(lambda l,t: nql.ProcDef(lineno=l, name=t[1], parameters=t[2], children=[t[3]])))
     globaldef = (global_ - identifier_ - semi_).setParseAction(a(lambda l,t: nql.GlobalReg(lineno=l, name=t[1])))
-    decl = procdef | globaldef
+    optiondef = (option_ - identifier_ - semi_).setParseAction(a(lambda l,t: nql.Option(lineno=l, name=t[1])))
+    decl = procdef | globaldef | optiondef
 
     program = pp.ZeroOrMore(decl).setParseAction(a(lambda l,t: nql.Program(lineno=l, children=list(t))))
     program.ignore(pp.cStyleComment)
