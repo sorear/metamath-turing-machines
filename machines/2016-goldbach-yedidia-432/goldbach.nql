@@ -78,5 +78,4 @@ proc main() {
             incr(primeCounter);
         }
     }
-    return;
 }

@@ -1,0 +1,626 @@
+
+NAME: main() ORDER: 13
+    0000000000000 -> reg_init
+    0000000000001 -> reg_init
+    0000000000010 -> reg_init
+    0000000000011 -> reg_init
+    0000000000100 -> reg_init
+    0000000000101 -> reg_init
+    0000000000110 -> reg_init
+    0000000000111 -> reg_init
+    0000000001000 -> reg_init
+    0000000001001 -> reg_init
+    0000000001010 -> reg_init
+    0000000001011 -> reg_init
+    0000000001100 -> reg_init
+    0000000001101 -> reg_init
+    0000000001110 -> reg_init
+    0000000001111 -> reg_init
+    00000000100   -> transfer(_GevenNumber)
+    0000000010100 -> reg_incr(_GevenNumber)
+    0000000010101 -> reg_incr(_GevenNumber)
+    000000001011  -> noop.1
+    0000000011    -> one(_GfoundSum)
+    0000000100000 -> reg_decr(_GfoundSum) #gen2
+    0000000100001 -> main().jump(4179,12) -> gen1
+    0000000100010 -> reg_incr(_GfoundSum)
+    0000000100011 -> noop.0 #gen3
+    00000001001   -> zero(_GfoundSum)
+    0000000101000 -> reg_incr(_GevenNumber)
+    0000000101001 -> reg_incr(_GevenNumber)
+    000000010101  -> noop.1
+    00000001011   -> noop.2
+    0000000110    -> one(_GprimeCounter)
+    0000000111    -> transfer(_GprimeCounter,_scratch_1,_scratch_2) #gen5
+    00000010000   -> transfer(_scratch_2,_GprimeCounter)
+    00000010001   -> noop.2
+    0000001001    -> transfer(_GevenNumber,_scratch_2,_scratch_3)
+    00000010100   -> transfer(_scratch_3,_GevenNumber)
+    0000001010100 -> reg_decr(_scratch_2) #gen6
+    0000001010101 -> main().jump(5,2) -> gen7
+    0000001010110 -> reg_decr(_scratch_1)
+    0000001010111 -> main().jump(17,4) -> gen8
+    0000001011000 -> main().jump(4,4) -> gen6
+    0000001011001 -> noop.0 #gen7
+    000000101101  -> noop.1
+    00000010111   -> transfer(_scratch_1)
+    0000001100000 -> main().jump(32,13) -> gen2
+    0000001100001 -> noop.0 #gen8
+    000000110001  -> noop.1
+    00000011001   -> transfer(_scratch_2)
+    0000001101    -> noop.3 #gen9
+    000000111     -> noop.4
+    000001        -> noop.7
+    00001         -> noop.8
+    0001          -> noop.9
+    001           -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime)
+    0100000000000 -> reg_decr(_GisThisOnePrime)
+    0100000000001 -> main().jump(2128,11) -> gen31
+    0100000000010 -> reg_incr(_GisThisOnePrime)
+    0100000000011 -> noop.0 #gen33
+    01000000001   -> noop.2
+    0100000001    -> noop.3
+    010000001     -> noop.4
+    01000001      -> noop.5
+    0100001       -> assignXtoYminusX(_GprimeCounter,_GevenNumber)
+    010001        -> noop.7
+    01001         -> noop.8
+    0101          -> noop.9
+    011           -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime)
+    1000000       -> assignXtoYminusX(_GprimeCounter,_GevenNumber)
+    1000001000000 -> reg_decr(_GisThisOnePrime)
+    1000001000001 -> main().jump(16,4) -> gen32
+    1000001000010 -> reg_incr(_GisThisOnePrime)
+    1000001000011 -> noop.0 #gen38
+    10000010001   -> noop.2
+    1000001001    -> one(_GfoundSum)
+    1000001010000 -> incr(_GprimeCounter) #gen36 #gen37 #gen31 #gen32
+    1000001010001 -> main().jump(56,13) -> gen5
+    1000001010010 -> main().jump(32,13) -> gen2 #gen4
+    1000001010011 -> noop.0 #gen1
+    10000010101   -> noop.2
+    1000001011    -> noop.3
+    10000011      -> noop.5
+    100001        -> noop.7
+    10001         -> noop.8
+    1001          -> noop.9
+    101           -> noop.10
+    11            -> noop.11
+
+NAME: noop.11 ORDER: 11
+
+NAME: noop.10 ORDER: 10
+
+NAME: noop.9 ORDER: 9
+
+NAME: noop.8 ORDER: 8
+
+NAME: noop.7 ORDER: 7
+
+NAME: noop.5 ORDER: 5
+
+NAME: noop.3 ORDER: 3
+
+NAME: noop.2 ORDER: 2
+
+NAME: noop.0 ORDER: 0
+
+NAME: main().jump(32,13) ORDER: 0
+
+NAME: main().jump(56,13) ORDER: 0
+
+NAME: incr(_GprimeCounter) ORDER: 0
+     -> reg_incr(_GprimeCounter)
+
+NAME: reg_incr(_GprimeCounter) ORDER: 0
+
+NAME: one(_GfoundSum) ORDER: 3
+    0   -> transfer(_GfoundSum)
+    100 -> reg_incr(_GfoundSum)
+    101 -> noop.0
+    11  -> noop.1
+
+NAME: noop.1 ORDER: 1
+
+NAME: reg_incr(_GfoundSum) ORDER: 0
+
+NAME: transfer(_GfoundSum) ORDER: 2
+    00 -> reg_decr(_GfoundSum) #again
+    01 -> transfer(_GfoundSum).jump(3,1) -> zero
+    10 -> transfer(_GfoundSum).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_GfoundSum).jump(0,2) ORDER: 0
+
+NAME: transfer(_GfoundSum).jump(3,1) ORDER: 0
+
+NAME: reg_decr(_GfoundSum) ORDER: 0
+
+NAME: reg_incr(_GisThisOnePrime) ORDER: 0
+
+NAME: main().jump(16,4) ORDER: 0
+
+NAME: reg_decr(_GisThisOnePrime) ORDER: 0
+
+NAME: assignXtoYminusX(_GprimeCounter,_GevenNumber) ORDER: 6
+    000    -> transfer(_GevenNumber,_scratch_2,_scratch_3)
+    0010   -> transfer(_scratch_3,_GevenNumber)
+    0011   -> noop.2
+    010    -> transfer(_GprimeCounter,_scratch_3,_scratch_4)
+    0110   -> transfer(_scratch_4,_GprimeCounter)
+    0111   -> transfer(_scratch_2,_scratch_1)
+    100000 -> reg_decr(_scratch_3) #gen34
+    100001 -> assignXtoYminusX(_GprimeCounter,_GevenNumber).jump(5,2) -> gen35
+    100010 -> reg_decr(_scratch_1)
+    100011 -> noop.0
+    100100 -> assignXtoYminusX(_GprimeCounter,_GevenNumber).jump(0,3) -> gen34
+    100101 -> noop.0 #gen35
+    10011  -> noop.1
+    1010   -> transfer(_GprimeCounter)
+    1011   -> transfer(_scratch_1,_GprimeCounter)
+    11     -> noop.4
+
+NAME: noop.4 ORDER: 4
+
+NAME: transfer(_scratch_1,_GprimeCounter) ORDER: 2
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_GprimeCounter).jump(4,2) -> zero
+    10 -> reg_incr(_GprimeCounter)
+    11 -> transfer(_scratch_1,_GprimeCounter).jump(0,2) -> again
+
+NAME: transfer(_scratch_1,_GprimeCounter).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_1,_GprimeCounter).jump(4,2) ORDER: 0
+
+NAME: reg_decr(_scratch_1) ORDER: 0
+
+NAME: transfer(_GprimeCounter) ORDER: 2
+    00 -> reg_decr(_GprimeCounter) #again
+    01 -> transfer(_GprimeCounter).jump(3,1) -> zero
+    10 -> transfer(_GprimeCounter).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_GprimeCounter).jump(0,2) ORDER: 0
+
+NAME: transfer(_GprimeCounter).jump(3,1) ORDER: 0
+
+NAME: reg_decr(_GprimeCounter) ORDER: 0
+
+NAME: assignXtoYminusX(_GprimeCounter,_GevenNumber).jump(0,3) ORDER: 0
+
+NAME: assignXtoYminusX(_GprimeCounter,_GevenNumber).jump(5,2) ORDER: 0
+
+NAME: reg_decr(_scratch_3) ORDER: 0
+
+NAME: transfer(_scratch_2,_scratch_1) ORDER: 2
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_scratch_1).jump(4,2) -> zero
+    10 -> reg_incr(_scratch_1)
+    11 -> transfer(_scratch_2,_scratch_1).jump(0,2) -> again
+
+NAME: transfer(_scratch_2,_scratch_1).jump(0,2) ORDER: 0
+
+NAME: reg_incr(_scratch_1) ORDER: 0
+
+NAME: transfer(_scratch_2,_scratch_1).jump(4,2) ORDER: 0
+
+NAME: reg_decr(_scratch_2) ORDER: 0
+
+NAME: transfer(_scratch_4,_GprimeCounter) ORDER: 2
+    00 -> reg_decr(_scratch_4) #again
+    01 -> transfer(_scratch_4,_GprimeCounter).jump(4,2) -> zero
+    10 -> reg_incr(_GprimeCounter)
+    11 -> transfer(_scratch_4,_GprimeCounter).jump(0,2) -> again
+
+NAME: transfer(_scratch_4,_GprimeCounter).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_4,_GprimeCounter).jump(4,2) ORDER: 0
+
+NAME: reg_decr(_scratch_4) ORDER: 0
+
+NAME: transfer(_GprimeCounter,_scratch_3,_scratch_4) ORDER: 3
+    000 -> reg_decr(_GprimeCounter) #again
+    001 -> transfer(_GprimeCounter,_scratch_3,_scratch_4).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_3)
+    011 -> reg_incr(_scratch_4)
+    100 -> transfer(_GprimeCounter,_scratch_3,_scratch_4).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_GprimeCounter,_scratch_3,_scratch_4).jump(0,3) ORDER: 0
+
+NAME: reg_incr(_scratch_4) ORDER: 0
+
+NAME: reg_incr(_scratch_3) ORDER: 0
+
+NAME: transfer(_GprimeCounter,_scratch_3,_scratch_4).jump(5,2) ORDER: 0
+
+NAME: transfer(_scratch_3,_GevenNumber) ORDER: 2
+    00 -> reg_decr(_scratch_3) #again
+    01 -> transfer(_scratch_3,_GevenNumber).jump(4,2) -> zero
+    10 -> reg_incr(_GevenNumber)
+    11 -> transfer(_scratch_3,_GevenNumber).jump(0,2) -> again
+
+NAME: transfer(_scratch_3,_GevenNumber).jump(0,2) ORDER: 0
+
+NAME: reg_incr(_GevenNumber) ORDER: 0
+
+NAME: transfer(_scratch_3,_GevenNumber).jump(4,2) ORDER: 0
+
+NAME: transfer(_GevenNumber,_scratch_2,_scratch_3) ORDER: 3
+    000 -> reg_decr(_GevenNumber) #again
+    001 -> transfer(_GevenNumber,_scratch_2,_scratch_3).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_2)
+    011 -> reg_incr(_scratch_3)
+    100 -> transfer(_GevenNumber,_scratch_2,_scratch_3).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_GevenNumber,_scratch_2,_scratch_3).jump(0,3) ORDER: 0
+
+NAME: reg_incr(_scratch_2) ORDER: 0
+
+NAME: transfer(_GevenNumber,_scratch_2,_scratch_3).jump(5,2) ORDER: 0
+
+NAME: reg_decr(_GevenNumber) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime) ORDER: 10
+    0000000    -> transfer(_GprimeCounter,_scratch_1,_scratch_2)
+    00000010   -> transfer(_scratch_2,_GprimeCounter)
+    0000001100 -> reg_decr(_scratch_1)
+    0000001101 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(29,4) -> gen10
+    0000001110 -> reg_decr(_scratch_1)
+    0000001111 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(13,3) -> gen12
+    00000100   -> transfer(_scratch_1)
+    0000010100 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(13,3) -> gen10
+    0000010101 -> noop.0 #gen12
+    000001011  -> noop.1
+    00000110   -> zero(_GisThisOnePrime)
+    0000011100 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(523,9) -> gen13
+    0000011101 -> noop.0 #gen10 #gen11
+    000001111  -> noop.1
+    00001000   -> transfer(_GisThisOnePrime)
+    0000100100 -> reg_incr(_GisThisOnePrime)
+    0000100101 -> reg_incr(_GisThisOnePrime)
+    000010011  -> noop.1 #gen15
+    0000101    -> transfer(_GprimeCounter,_scratch_1,_scratch_2)
+    00001100   -> transfer(_scratch_2,_GprimeCounter)
+    00001101   -> noop.2
+    0000111    -> transfer(_GisThisOnePrime,_scratch_2,_scratch_3)
+    00010000   -> transfer(_scratch_3,_GisThisOnePrime)
+    0001000100 -> reg_decr(_scratch_2) #gen16
+    0001000101 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(5,2) -> gen17
+    0001000110 -> reg_decr(_scratch_1)
+    0001000111 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(17,4) -> gen18
+    0001001000 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(4,4) -> gen16
+    0001001001 -> reg_decr(_scratch_1) #gen17
+    0001001010 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(523,9) -> gen14
+    0001001011 -> noop.0
+    00010011   -> transfer(_scratch_1)
+    0001010000 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(9,3) -> gen19
+    0001010001 -> noop.0 #gen18
+    000101001  -> noop.1
+    00010101   -> transfer(_scratch_2)
+    0001011000 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(523,9) -> gen14
+    0001011001 -> noop.0 #gen19
+    000101101  -> noop.1
+    00010111   -> noop.2
+    00011      -> noop.5
+    001        -> noop.7
+    01         -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh)
+    1000000000 -> reg_decr(_Gh)
+    1000000001 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(4,2) -> gen30
+    1000000010 -> reg_incr(_Gh)
+    1000000011 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(9,3) -> gen28
+    10000001   -> zero(_GisThisOnePrime) #gen30
+    1000001000 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(3,1) -> gen13
+    1000001001 -> incr(_GisThisOnePrime) #gen28 #gen29
+    1000001010 -> isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(38,10) -> gen15
+    1000001011 -> noop.0 #gen14 #gen13
+    10000011   -> noop.2
+    100001     -> noop.4
+    10001      -> noop.5
+    1001       -> noop.6
+    101        -> noop.7
+    11         -> noop.8
+
+NAME: noop.6 ORDER: 6
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(38,10) ORDER: 0
+
+NAME: incr(_GisThisOnePrime) ORDER: 0
+     -> reg_incr(_GisThisOnePrime)
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(3,1) ORDER: 0
+
+NAME: zero(_GisThisOnePrime) ORDER: 2
+       -> transfer(_GisThisOnePrime)
+
+NAME: transfer(_GisThisOnePrime) ORDER: 2
+    00 -> reg_decr(_GisThisOnePrime) #again
+    01 -> transfer(_GisThisOnePrime).jump(3,1) -> zero
+    10 -> transfer(_GisThisOnePrime).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_GisThisOnePrime).jump(0,2) ORDER: 0
+
+NAME: transfer(_GisThisOnePrime).jump(3,1) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(9,3) ORDER: 0
+
+NAME: reg_incr(_Gh) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(4,2) ORDER: 0
+
+NAME: reg_decr(_Gh) ORDER: 0
+
+NAME: modulus(_GprimeCounter,_GisThisOnePrime,_Gh) ORDER: 8
+    00000    -> transfer(_GprimeCounter,_scratch_1,_scratch_2)
+    000010   -> transfer(_scratch_2,_GprimeCounter)
+    000011   -> transfer(_Gh)
+    000100   -> transfer(_scratch_1,_Gh)
+    000101   -> noop.2 #gen21
+    00011    -> transfer(_Gh,_scratch_1,_scratch_2)
+    001000   -> transfer(_scratch_2,_Gh)
+    001001   -> noop.2
+    00101    -> transfer(_GisThisOnePrime,_scratch_2,_scratch_3)
+    001100   -> transfer(_scratch_3,_GisThisOnePrime)
+    00110100 -> reg_decr(_scratch_2) #gen22
+    00110101 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(5,2) -> gen23
+    00110110 -> reg_decr(_scratch_1)
+    00110111 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(65,6) -> gen24
+    00111000 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(4,4) -> gen22
+    00111001 -> noop.0 #gen23
+    0011101  -> noop.1
+    001111   -> transfer(_scratch_1)
+    01000000 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(9,3) -> gen25
+    01000001 -> noop.0 #gen24
+    0100001  -> noop.1
+    010001   -> transfer(_scratch_2)
+    01001000 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(65,6) -> gen20
+    01001001 -> noop.0 #gen25
+    0100101  -> noop.1
+    010011   -> noop.2
+    01010    -> transfer(_Gh,_scratch_1,_scratch_3)
+    010110   -> transfer(_scratch_3,_Gh)
+    010111   -> noop.2
+    01100    -> transfer(_GisThisOnePrime,_scratch_3,_scratch_4)
+    011010   -> transfer(_scratch_4,_GisThisOnePrime)
+    011011   -> transfer(_scratch_1,_scratch_2)
+    01110000 -> reg_decr(_scratch_3) #gen26
+    01110001 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(5,2) -> gen27
+    01110010 -> reg_decr(_scratch_2)
+    01110011 -> noop.0
+    01110100 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(0,3) -> gen26
+    01110101 -> noop.0 #gen27
+    0111011  -> noop.1
+    011110   -> transfer(_Gh)
+    011111   -> transfer(_scratch_2,_Gh)
+    10000000 -> modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(20,8) -> gen21
+    10000001 -> noop.0 #gen20
+    1000001  -> noop.1
+    100001   -> noop.2
+    10001    -> noop.3
+    1001     -> noop.4
+    101      -> noop.5
+    11       -> noop.6
+
+NAME: modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(20,8) ORDER: 0
+
+NAME: transfer(_scratch_2,_Gh) ORDER: 2
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_Gh).jump(4,2) -> zero
+    10 -> reg_incr(_Gh)
+    11 -> transfer(_scratch_2,_Gh).jump(0,2) -> again
+
+NAME: transfer(_scratch_2,_Gh).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_2,_Gh).jump(4,2) ORDER: 0
+
+NAME: transfer(_Gh) ORDER: 2
+    00 -> reg_decr(_Gh) #again
+    01 -> transfer(_Gh).jump(3,1) -> zero
+    10 -> transfer(_Gh).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_Gh).jump(0,2) ORDER: 0
+
+NAME: transfer(_Gh).jump(3,1) ORDER: 0
+
+NAME: modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(0,3) ORDER: 0
+
+NAME: modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(5,2) ORDER: 0
+
+NAME: transfer(_scratch_1,_scratch_2) ORDER: 2
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_scratch_2).jump(4,2) -> zero
+    10 -> reg_incr(_scratch_2)
+    11 -> transfer(_scratch_1,_scratch_2).jump(0,2) -> again
+
+NAME: transfer(_scratch_1,_scratch_2).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_1,_scratch_2).jump(4,2) ORDER: 0
+
+NAME: transfer(_scratch_4,_GisThisOnePrime) ORDER: 2
+    00 -> reg_decr(_scratch_4) #again
+    01 -> transfer(_scratch_4,_GisThisOnePrime).jump(4,2) -> zero
+    10 -> reg_incr(_GisThisOnePrime)
+    11 -> transfer(_scratch_4,_GisThisOnePrime).jump(0,2) -> again
+
+NAME: transfer(_scratch_4,_GisThisOnePrime).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_4,_GisThisOnePrime).jump(4,2) ORDER: 0
+
+NAME: transfer(_GisThisOnePrime,_scratch_3,_scratch_4) ORDER: 3
+    000 -> reg_decr(_GisThisOnePrime) #again
+    001 -> transfer(_GisThisOnePrime,_scratch_3,_scratch_4).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_3)
+    011 -> reg_incr(_scratch_4)
+    100 -> transfer(_GisThisOnePrime,_scratch_3,_scratch_4).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_GisThisOnePrime,_scratch_3,_scratch_4).jump(0,3) ORDER: 0
+
+NAME: transfer(_GisThisOnePrime,_scratch_3,_scratch_4).jump(5,2) ORDER: 0
+
+NAME: transfer(_scratch_3,_Gh) ORDER: 2
+    00 -> reg_decr(_scratch_3) #again
+    01 -> transfer(_scratch_3,_Gh).jump(4,2) -> zero
+    10 -> reg_incr(_Gh)
+    11 -> transfer(_scratch_3,_Gh).jump(0,2) -> again
+
+NAME: transfer(_scratch_3,_Gh).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_3,_Gh).jump(4,2) ORDER: 0
+
+NAME: transfer(_Gh,_scratch_1,_scratch_3) ORDER: 3
+    000 -> reg_decr(_Gh) #again
+    001 -> transfer(_Gh,_scratch_1,_scratch_3).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_3)
+    100 -> transfer(_Gh,_scratch_1,_scratch_3).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_Gh,_scratch_1,_scratch_3).jump(0,3) ORDER: 0
+
+NAME: transfer(_Gh,_scratch_1,_scratch_3).jump(5,2) ORDER: 0
+
+NAME: modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(65,6) ORDER: 0
+
+NAME: transfer(_scratch_2) ORDER: 2
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2).jump(3,1) -> zero
+    10 -> transfer(_scratch_2).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_scratch_2).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_2).jump(3,1) ORDER: 0
+
+NAME: modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(9,3) ORDER: 0
+
+NAME: transfer(_scratch_1) ORDER: 2
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1).jump(3,1) -> zero
+    10 -> transfer(_scratch_1).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_scratch_1).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_1).jump(3,1) ORDER: 0
+
+NAME: modulus(_GprimeCounter,_GisThisOnePrime,_Gh).jump(4,4) ORDER: 0
+
+NAME: transfer(_scratch_3,_GisThisOnePrime) ORDER: 2
+    00 -> reg_decr(_scratch_3) #again
+    01 -> transfer(_scratch_3,_GisThisOnePrime).jump(4,2) -> zero
+    10 -> reg_incr(_GisThisOnePrime)
+    11 -> transfer(_scratch_3,_GisThisOnePrime).jump(0,2) -> again
+
+NAME: transfer(_scratch_3,_GisThisOnePrime).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_3,_GisThisOnePrime).jump(4,2) ORDER: 0
+
+NAME: transfer(_GisThisOnePrime,_scratch_2,_scratch_3) ORDER: 3
+    000 -> reg_decr(_GisThisOnePrime) #again
+    001 -> transfer(_GisThisOnePrime,_scratch_2,_scratch_3).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_2)
+    011 -> reg_incr(_scratch_3)
+    100 -> transfer(_GisThisOnePrime,_scratch_2,_scratch_3).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_GisThisOnePrime,_scratch_2,_scratch_3).jump(0,3) ORDER: 0
+
+NAME: transfer(_GisThisOnePrime,_scratch_2,_scratch_3).jump(5,2) ORDER: 0
+
+NAME: transfer(_Gh,_scratch_1,_scratch_2) ORDER: 3
+    000 -> reg_decr(_Gh) #again
+    001 -> transfer(_Gh,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_Gh,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_Gh,_scratch_1,_scratch_2).jump(0,3) ORDER: 0
+
+NAME: transfer(_Gh,_scratch_1,_scratch_2).jump(5,2) ORDER: 0
+
+NAME: transfer(_scratch_1,_Gh) ORDER: 2
+    00 -> reg_decr(_scratch_1) #again
+    01 -> transfer(_scratch_1,_Gh).jump(4,2) -> zero
+    10 -> reg_incr(_Gh)
+    11 -> transfer(_scratch_1,_Gh).jump(0,2) -> again
+
+NAME: transfer(_scratch_1,_Gh).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_1,_Gh).jump(4,2) ORDER: 0
+
+NAME: transfer(_scratch_2,_GprimeCounter) ORDER: 2
+    00 -> reg_decr(_scratch_2) #again
+    01 -> transfer(_scratch_2,_GprimeCounter).jump(4,2) -> zero
+    10 -> reg_incr(_GprimeCounter)
+    11 -> transfer(_scratch_2,_GprimeCounter).jump(0,2) -> again
+
+NAME: transfer(_scratch_2,_GprimeCounter).jump(0,2) ORDER: 0
+
+NAME: transfer(_scratch_2,_GprimeCounter).jump(4,2) ORDER: 0
+
+NAME: transfer(_GprimeCounter,_scratch_1,_scratch_2) ORDER: 3
+    000 -> reg_decr(_GprimeCounter) #again
+    001 -> transfer(_GprimeCounter,_scratch_1,_scratch_2).jump(5,2) -> zero
+    010 -> reg_incr(_scratch_1)
+    011 -> reg_incr(_scratch_2)
+    100 -> transfer(_GprimeCounter,_scratch_1,_scratch_2).jump(0,3) -> again
+    101 -> noop.0 #zero
+    11  -> noop.1
+
+NAME: transfer(_GprimeCounter,_scratch_1,_scratch_2).jump(0,3) ORDER: 0
+
+NAME: transfer(_GprimeCounter,_scratch_1,_scratch_2).jump(5,2) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(523,9) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(4,4) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(17,4) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(5,2) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(13,3) ORDER: 0
+
+NAME: isPrime(_GprimeCounter,_Gh,_GisThisOnePrime).jump(29,4) ORDER: 0
+
+NAME: main().jump(2128,11) ORDER: 0
+
+NAME: main().jump(4,4) ORDER: 0
+
+NAME: main().jump(17,4) ORDER: 0
+
+NAME: main().jump(5,2) ORDER: 0
+
+NAME: one(_GprimeCounter) ORDER: 3
+    0   -> transfer(_GprimeCounter)
+    100 -> reg_incr(_GprimeCounter)
+    101 -> noop.0
+    11  -> noop.1
+
+NAME: zero(_GfoundSum) ORDER: 2
+       -> transfer(_GfoundSum)
+
+NAME: main().jump(4179,12) ORDER: 0
+
+NAME: transfer(_GevenNumber) ORDER: 2
+    00 -> reg_decr(_GevenNumber) #again
+    01 -> transfer(_GevenNumber).jump(3,1) -> zero
+    10 -> transfer(_GevenNumber).jump(0,2) -> again
+    11 -> noop.0 #zero
+
+NAME: transfer(_GevenNumber).jump(0,2) ORDER: 0
+
+NAME: transfer(_GevenNumber).jump(3,1) ORDER: 0
+
+NAME: reg_init ORDER: 0
