@@ -124,8 +124,20 @@ let transition_table_CONV = REWRITE_CONV[transition_table_DEF;nmap_CLAUSES;bmap_
    the initialization process itself does not have to be modeled since it
    halts, but we need a calculation-friendly tape representation *)
 
+let TAKE_DEF = define`TAKE 0 l = [] /\ TAKE (SUC i) l = (CONS (HD l:A) (TAKE i (TL l)))`;;
+let DROP_DEF = define`DROP 0 l = l /\ DROP (SUC i) l = DROP i (TL l:A list)`;;
+
+let LENGTH_TAKE = prove(`!i l. LENGTH (TAKE i l:A list) = i`,
+  INDUCT_TAC THEN ASM_REWRITE_TAC[TAKE_DEF;LENGTH]);;
+let LENGTH_DROP = prove(`!i (l:A list). i <= LENGTH l ==> LENGTH (DROP i l) = LENGTH l - i`,
+  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF;LENGTH;SUB_0;TL;LE_SUC;SUB_SUC;LE;NOT_SUC]);;
+let TAKE_DROP = prove(`!i l. i <= LENGTH l ==> APPEND (TAKE i l) (DROP i l) = l`,
+  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_SIMP_TAC[TAKE_DEF;DROP_DEF;APPEND;LENGTH;LE_SUC;LE;NOT_SUC;HD;TL]);;
+
 let list_tape_DEF = define `list_tape l tp = \i. &0 <= tp+i /\ tp+i < &(LENGTH l) /\ EL (num_of_int (tp+i)) l`;;
+(*
 let bilist_tape_DEF = define `bilist_tape ll sy rl = \i. if i = &0 then sy else let l = if i < &0 then ll else rl in let ii = num_of_int (abs i - 1) in ii < LENGTH l /\ EL ii l`;;
+*)
 
 let list_tape_SHIFT = prove(`shift j (list_tape l tp) = list_tape l (tp+j)`, SIMP_TAC[tape_shift_DEF;list_tape_DEF;INT_ADD_ASSOC]);;
 
@@ -149,8 +161,7 @@ let list_tape_LAPPEND = prove(
      USE_THEN "num" (SUBST1_TAC o SYM) THEN REWRITE_TAC[INT_OF_NUM_CLAUSES] THEN
      REWRITE_TAC[NUM_OF_INT_OF_NUM;GSYM ADD1;NOT_SUC] THEN REWRITE_TAC[ADD1;ADD_SUB]]);;
 
-
-
-
+(*
 let bilist_tape_READ = prove(`bilist_tape ll sy rl (&0) = sy`, REWRITE_TAC[bilist_tape_DEF]);;
 let bilist_tape_WRITE = prove(`write sy' (bilist_tape_2 ll sy rl) = (bilist_tape_2 ll sy' rl)`, SIMP_TAC[bilist_tape_DEF;tape_write_DEF]);;
+*)
