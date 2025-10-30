@@ -1,8 +1,34 @@
-(* preliminaries - function theory *)
+let _ = prioritize_int();;
+
+(* preliminaries - function and list handling *)
 
 let ITERF_DEF = define`ITERF 0 f (x:A) = x /\ ITERF (SUC n) f x = f (ITERF n f x)`;;
 let ITERF_ADD = prove(`!m n f (x:A). ITERF (m + n) f x = ITERF m f (ITERF n f x)`,
   INDUCT_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES;ITERF_DEF]);;
+
+let TAKE_DEF = define`TAKE 0 l = [] /\ TAKE (SUC i) l = (CONS (HD l:A) (TAKE i (TL l)))`;;
+let DROP_DEF = define`DROP 0 l = l /\ DROP (SUC i) l = DROP i (TL l:A list)`;;
+
+let LENGTH_TAKE = prove(`!i l. LENGTH (TAKE i l:A list) = i`,
+  INDUCT_TAC THEN ASM_REWRITE_TAC[TAKE_DEF;LENGTH]);;
+let LENGTH_DROP = prove(`!i (l:A list). i <= LENGTH l ==> LENGTH (DROP i l) = LENGTH l - i`,
+  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF;LENGTH;SUB_0;TL;LE_SUC;SUB_SUC;LE;NOT_SUC]);;
+
+let EL_TAKE = prove(`!i j l. i < j ==> EL i (TAKE j l) = (EL i l:A)`,
+  REPEAT INDUCT_TAC THEN ASM_REWRITE_TAC[TAKE_DEF; EL; HD; TL; LT_SUC; LT]);;
+let EL_DROP = prove(`!j l. EL i (DROP j l) = EL (i + j) (l:A list)`,
+  INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF;ADD_CLAUSES;EL]);;
+
+let TAKE_DROP = prove(`!i l. i <= LENGTH l ==> APPEND (TAKE i l) (DROP i l) = l`,
+  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_SIMP_TAC[TAKE_DEF;DROP_DEF;APPEND;LENGTH;LE_SUC;LE;NOT_SUC;HD;TL]);;
+
+let TAKE_APPEND_EQ = prove(`!a b. TAKE (LENGTH (a:A list)) (APPEND a b) = a`,
+  LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[LENGTH; TAKE_DEF; APPEND; HD; TL]);;
+
+let DROP_APPEND_GE = prove(
+ `!x a b. LENGTH a <= x ==> DROP x (APPEND (a:A list) b) = DROP (x - LENGTH a) b`,
+  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF; APPEND; LENGTH;
+    SUB; LE_SUC; SUB_PRESUC; TL] THEN REWRITE_TAC[LE; NOT_SUC]);;
 
 (* preliminaries - fast maps
 
@@ -78,7 +104,7 @@ let gtm_step_DEF = define`gtm_step tt (st:num,t) = let ns,m,w = tt st (t (&0)) i
    represented as transition table values. name_to_state is also important and
    will drive most proving *)
 
-let nqlroot = Sys.getenv "NQLROOT";;
+let nqlroot = "..";;
 let tm_lines = In_channel.with_open_text (nqlroot ^ "/machines/2017-zf-sorear-748/zf2.tm") In_channel.input_lines ;;
 let tm_states_tok = List.map (String.split_on_char ' ') ("HALT = 0 L HALT 0 L HALT" :: tm_lines) ;;
 let state_of_name n = Option.get (List.find_index (fun tp -> n = (List.hd tp)) tm_states_tok) ;;
@@ -90,7 +116,7 @@ let state_info = List.map toks_to_state_info tm_states_tok ;;
 let mk_bool b = if b then `T` else `F` ;;
 
 (* subst a large term into the body of an abs is slow since it needs to be checked for bound variables; possibly exponential nested alpha, def linear *)
-(* comparing rigorously identical terms is fast *)
+(* comparing pointer identical terms is fast; at worst linear if no alpha convert *)
 (* assumption lists are linear *)
 (* substitution always linear in template, except when alpha converting *)
 (* once_depth: try root, try children once if failed *)
@@ -124,16 +150,6 @@ let transition_table_CONV = REWRITE_CONV[transition_table_DEF;nmap_CLAUSES;bmap_
    the initialization process itself does not have to be modeled since it
    halts, but we need a calculation-friendly tape representation *)
 
-let TAKE_DEF = define`TAKE 0 l = [] /\ TAKE (SUC i) l = (CONS (HD l:A) (TAKE i (TL l)))`;;
-let DROP_DEF = define`DROP 0 l = l /\ DROP (SUC i) l = DROP i (TL l:A list)`;;
-
-let LENGTH_TAKE = prove(`!i l. LENGTH (TAKE i l:A list) = i`,
-  INDUCT_TAC THEN ASM_REWRITE_TAC[TAKE_DEF;LENGTH]);;
-let LENGTH_DROP = prove(`!i (l:A list). i <= LENGTH l ==> LENGTH (DROP i l) = LENGTH l - i`,
-  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF;LENGTH;SUB_0;TL;LE_SUC;SUB_SUC;LE;NOT_SUC]);;
-let TAKE_DROP = prove(`!i l. i <= LENGTH l ==> APPEND (TAKE i l) (DROP i l) = l`,
-  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_SIMP_TAC[TAKE_DEF;DROP_DEF;APPEND;LENGTH;LE_SUC;LE;NOT_SUC;HD;TL]);;
-
 let list_tape_DEF = define `list_tape l tp = \i. &0 <= tp+i /\ tp+i < &(LENGTH l) /\ EL (num_of_int (tp+i)) l`;;
 (*
 let bilist_tape_DEF = define `bilist_tape ll sy rl = \i. if i = &0 then sy else let l = if i < &0 then ll else rl in let ii = num_of_int (abs i - 1) in ii < LENGTH l /\ EL ii l`;;
@@ -152,16 +168,97 @@ let list_tape_RAPPEND = prove(
 
 let list_tape_LAPPEND = prove(
  `list_tape (APPEND [F] l) (tp + &1) = list_tape l tp`,
-   SIMP_TAC[list_tape_DEF;APPEND;LENGTH;EL_CONS;INT_ADD_AC] THEN ABS_TAC THEN ASM_CASES_TAC `i + tp + &1 = &0` THENL[
-     MP_TAC(SPEC `&0` NUM_OF_INT) THEN ASM_SIMP_TAC[INT_LE_REFL;INT_OF_NUM_EQ] THEN ASM_ARITH_TAC;
-     ASM_REWRITE_TAC[INT_LE_LT;INT_ADD_ASSOC;GSYM INT_LE_DISCRETE;ADD1;GSYM INT_OF_NUM_ADD;INT_LT_RADD] THEN
-     REWRITE_TAC[GSYM INT_ADD_ASSOC;GSYM INT_LE_LT] THEN
-     SIMP_TAC[TAUT `(p/\q)=(p/\r)<=>(p==>q=r)`;NUM_OF_INT;INT_ADD_ASSOC] THEN FIRST_X_ASSUM (DESTRUCT_TAC "nz") THEN
-     INTRO_TAC "num" THEN USE_THEN "nz" (UNDISCH_TAC o concl) THEN REWRITE_TAC[INT_ADD_ASSOC] THEN
-     USE_THEN "num" (SUBST1_TAC o SYM) THEN REWRITE_TAC[INT_OF_NUM_CLAUSES] THEN
-     REWRITE_TAC[NUM_OF_INT_OF_NUM;GSYM ADD1;NOT_SUC] THEN REWRITE_TAC[ADD1;ADD_SUB]]);;
+  SIMP_TAC[list_tape_DEF; LENGTH; APPEND; INT_ADD_AC] THEN ABS_TAC THEN
+  SIMP_TAC[INT_ADD_ASSOC] THEN ASM_CASES_TAC `&0 <= i + tp` THENL [
+   POP_ASSUM (DESTRUCT_TAC "@j. eq" o MATCH_MP NUM_OF_INT_2) THEN ASM_SIMP_TAC[
+     INT_OF_NUM_CLAUSES; GSYM ADD1; LT_SUC; NUM_OF_INT_OF_NUM; EL; TL; LE_0];
+     ASM_CASES_TAC `i + tp = -- &1` THENL[
+       ASM_SIMP_TAC[] THEN CONV_TAC INT_REDUCE_CONV THEN
+       SIMP_TAC[EL; NUM_OF_INT_OF_NUM; HD]; ASM_ARITH_TAC]]);;
 
+let list_tape_WRITE = prove(
+ `tp < LENGTH l ==> write b (list_tape l (&tp)) =
+      list_tape (APPEND (TAKE tp l) (CONS b (DROP (SUC tp) l))) (&tp)`,
+ SIMP_TAC[tape_write_DEF; list_tape_DEF] THEN DISCH_TAC THEN ABS_TAC THEN
+ ASM_CASES_TAC `&0 <= &tp + i` THENL [
+   POP_ASSUM (DESTRUCT_TAC "@j. eq" o MATCH_MP NUM_OF_INT_2) THEN
+   SUBGOAL_TAC "i" `i = &0 <=> (j:num) = tp` [ASM_ARITH_TAC] THEN
+   SUBGOAL_TAC "as" `tp + SUC (LENGTH l - SUC tp) = LENGTH (l:bool list)` [ASM_ARITH_TAC] THEN
+   ASM_SIMP_TAC[LENGTH_APPEND; LENGTH; LENGTH_DROP; LE_SUC_LT; EL_APPEND;
+     LENGTH_TAKE; INT_OF_NUM_CLAUSES; NUM_OF_INT_OF_NUM; LE_0] THEN
+   STRUCT_CASES_TAC (SPECL [`j:num`;`tp:num`] LT_CASES) THEN
+   ASM_SIMP_TAC[LT_IMP_NE; EL_TAKE; EL_DROP; SUB_REFL; LT_REFL; EL; HD; EL_CONS;
+     SUB_EQ_0; LE_REFL; GSYM NOT_LT] THEN
+   SUBGOAL_TAC  "tp < j ==> j" `j - tp - 1 + SUC tp = j /\ ~(j < tp)` [ASM_ARITH_TAC] THEN
+   ASM_REWRITE_TAC[];
+   COND_CASES_TAC THEN ASM_ARITH_TAC]);;
+
+let lzip_tape = define`lzip_tape ls rs =
+        list_tape (APPEND (REVERSE ls) rs) (&(LENGTH ls) - &1)`;;
+let rzip_tape = define`rzip_tape ls rs =
+        list_tape (APPEND (REVERSE ls) rs) (&(LENGTH ls))`;;
+let zip_shift = prove(
+ `shift (-- &1) (lzip_tape (CONS l ls) rs) = lzip_tape ls (CONS l rs) /\
+  shift    (&1) (rzip_tape ls (CONS r rs)) = rzip_tape (CONS r ls) rs /\
+  shift (-- &1) (rzip_tape ls rs) = lzip_tape ls rs /\
+  shift    (&1) (lzip_tape ls rs) = rzip_tape ls rs`,
+  SIMP_TAC[lzip_tape; rzip_tape; list_tape_SHIFT; REVERSE; GSYM APPEND_ASSOC;
+    LENGTH; APPEND] THEN REPEAT CONJ_TAC THEN AP_TERM_TAC THEN ARITH_TAC);;
+
+let zip_write = prove(
+ `write b (lzip_tape (CONS l ls) rs) = lzip_tape (CONS b ls) rs /\
+  write b (rzip_tape ls (CONS r rs)) = rzip_tape ls (CONS b rs)`,
+  SIMP_TAC[lzip_tape; rzip_tape] THEN
+  IMP_REWRITE_TAC[INT_OF_NUM_SUB; list_tape_WRITE] THEN
+  SIMP_TAC[LENGTH; ADD1; LE_ADD; LE_ADDR; LENGTH_APPEND; ADD_SUB; REVERSE;
+  GSYM APPEND_ASSOC; GSYM ADD_ASSOC; LT_ADD; APPEND] THEN
+  CONJ_TAC THEN TARGET_REWRITE_TAC [GSYM LENGTH_REVERSE] TAKE_APPEND_EQ THEN
+  IMP_REWRITE_TAC[DROP_APPEND_GE; TAKE_APPEND_EQ] THEN
+  SIMP_TAC[LENGTH_REVERSE; LE_ADDR; LE_ADD; ADD_SUB2; LT_ADD] THEN
+  SIMP_TAC[ONE; DROP_DEF; TL; ADD_CLAUSES; LT_0]);;
+
+let zip_extend = prove(
+  `lzip_tape [] rs = lzip_tape [F] rs /\ rzip_tape ls [] = rzip_tape ls [F]`,
+  SIMP_TAC[lzip_tape;rzip_tape;REVERSE;LENGTH;APPEND;SYM ONE;
+    list_tape_RAPPEND;APPEND_NIL] THEN
+  MP_TAC(SPECL[`rs:bool list`;`--(&1)`] (GEN_ALL list_tape_LAPPEND)) THEN
+  CONV_TAC INT_REDUCE_CONV THEN SIMP_TAC[APPEND]);;
+
+let zip_read = prove(
+  `lzip_tape (CONS l ls) rs (&0) = l /\ rzip_tape ls (CONS r rs) (&0) = r`,
+  REWRITE_TAC[lzip_tape; rzip_tape; list_tape_DEF; LENGTH; LENGTH_APPEND;
+    REVERSE; GSYM APPEND_ASSOC; APPEND; ADD1; INT_ADD_RID;
+    GSYM INT_OF_NUM_CLAUSES; ARITH_RULE `(x+y)-y=x`] THEN
+  REWRITE_TAC[INT_OF_NUM_CLAUSES; NUM_OF_INT_OF_NUM; LE_0; ADD;
+    LENGTH_REVERSE; EL_APPEND; LT_REFL; SUB_REFL; EL; HD; ADD_AC;
+    ARITH_RULE `x < x + y + 1`]);;
 (*
 let bilist_tape_READ = prove(`bilist_tape ll sy rl (&0) = sy`, REWRITE_TAC[bilist_tape_DEF]);;
 let bilist_tape_WRITE = prove(`write sy' (bilist_tape_2 ll sy rl) = (bilist_tape_2 ll sy' rl)`, SIMP_TAC[bilist_tape_DEF;tape_write_DEF]);;
 *)
+
+(* semantics
+
+   we start with a small-step semantics on "worldstates" (turing state, tape
+   pairs). this is not quite standard because it is irreflexive; this will
+   facilitate proofs of nontermination later, and can be used for a rough lower
+   bound on execution time, but no attempt is made to measure execution time
+   precisely
+
+   big step would make proofs easier since HOL's native equational reasoning
+   applies, but it appears unable to prove any useful property of
+   nonterminating programs. maybe if we had a beep state and coinductive
+   semantics? try to achieve the same end with a "transitive simplification"
+   tactic
+
+   extend to a small-step semantics on "classes" (sets of worldstates); this
+   roughly matches Hoare triples but always terminates and the operations
+   performed are implicit in the states *)
+
+let _ = parse_as_infix("-->_w",(12,"right"));;
+let tm_evolves = define`w1 -->_w w2 <=>
+   ?n. ITERF (SUC n) (gtm_step transition_table) w1 = w2`;;
+
+let tm_evolves_TRANS = prove(`w1 -->_w w2 /\ w2 -->_w w3 ==> w1 -->_w w3`,
+  REWRITE_TAC[tm_evolves] THEN INTRO_TAC "(@n1. im1) (@n2. im2)" THEN
+  EXISTS_TAC `n2 + SUC n1` THEN ASM_REWRITE_TAC[GSYM ADD; ITERF_ADD]);;
