@@ -1,5 +1,5 @@
 let _ = prioritize_int();;
-let _ = set_verbose_symbols(false);;
+let _ = unset_verbose_symbols();;
 
 (* hol-light usage notes
 
@@ -112,6 +112,8 @@ let mk_nmap_imprecise def =
 
 let bmap_DEF = define`BMAP f t c = if c then t else f:A` ;;
 let bmap_CLAUSES = prove(`BMAP f t F = f:A /\ BMAP f t T = t`, REWRITE_TAC[bmap_DEF]) ;;
+let bmap_EXPAND = prove(`c = BMAP f t <=> c F = f /\ c T = (t:A)`,
+  REWRITE_TAC[FUN_EQ_THM; bmap_DEF; FORALL_BOOL_THM; CONJ_SYM]);;
 let bmap_FORALL = prove(`(\m. !b. P (m b:A)) (BMAP f t) <=> P f /\ P t`, REWRITE_TAC[bmap_DEF;COND_RAND;FORALL_BOOL_THM;CONJ_SYM]);;
 
 let mk_bmap f t = mk_binop (mk_const("BMAP",[type_of f,aty])) f t ;;
@@ -142,14 +144,13 @@ let gtm_step_DEF = define`gtm_step tt (st:num,t) = let ns,m,w = tt st (t (&0)) i
    represented as transition table values. name_to_state is also important and
    will drive most proving *)
 
-let nqlroot = "..";;
-let tm_lines = In_channel.with_open_text (nqlroot ^ "/machines/2017-zf-sorear-748/zf2.tm") In_channel.input_lines ;;
-let tm_states_tok = List.map (String.split_on_char ' ') ("HALT = 0 L HALT 0 L HALT" :: tm_lines) ;;
-let state_of_name n = Option.get (List.find_index (fun tp -> n = (List.hd tp)) tm_states_tok) ;;
-let name_of_state s = List.hd (List.nth tm_states_tok s) ;;
-let next_info toks i = state_of_name (List.nth toks i) ;;
-let toks_to_state_info [name;_;w0;m0;ns0;w1;m1;ns1] = (name,(state_of_name ns0,m0="R",w0="1"),(state_of_name ns1,m1="R",w1="1")) ;;
-let state_info = List.map toks_to_state_info tm_states_tok ;;
+let tm_lines = strings_of_file "../machines/2017-zf-sorear-748/zf2.tm" ;;
+let tm_states_tok = map (String.split_on_char ' ') ("HALT = 0 L HALT 0 L HALT" :: tm_lines) ;;
+let state_of_name n = index n (map hd tm_states_tok) ;;
+let name_of_state s = hd (el s tm_states_tok) ;;
+let toks_to_state_info [name;_;w0;m0;ns0;w1;m1;ns1] =
+ (name,(state_of_name ns0,m0="R",w0="1"),(state_of_name ns1,m1="R",w1="1")) ;;
+let state_info = map toks_to_state_info tm_states_tok ;;
 
 let mk_bool b = if b then `T` else `F` ;;
 
@@ -301,6 +302,18 @@ let tm_evolves_BASE = prove(
  DISCH_TAC THEN REWRITE_TAC[tm_evolves] THEN EXISTS_TAC `0` THEN
  ASM_REWRITE_TAC[ITERF_DEF]);;
 
+  (* st, b must be literals *)
+let BEHAVIOR =
+  let cv = REWRITE_CONV[gtm_step_DEF;zip_read] THENC
+    transition_table_CONV THENC let_CONV THENC NUM_REDUCE_CONV THENC
+    REWRITE_CONV[zip_write; zip_shift] in
+  let tm = `gtm_step transition_table (st,lzip_tape (CONS b ls) rs),
+            gtm_step transition_table (st,rzip_tape ls (CONS b rs))` in
+  fun st b ->
+    let tm' = (vsubst [st,`st:num`;b,`b:bool`] tm) in
+    CONJ (MATCH_MP tm_evolves_BASE (cv (lhand tm')))
+         (MATCH_MP tm_evolves_BASE (cv (rand tm'))) ;;
+
 (* naming TM states
 
    we don't want to name every state, partly for performance but mostly because
@@ -315,27 +328,48 @@ let tm_evolves_BASE = prove(
    todo: generalize bmap-based definition mechanism
    todo: custom parse for tm states *)
 
-let defn_for_state tm name = new_basic_definition(mk_eq(tm,
-  mk_small_numeral(state_of_name name)));;
-let defn_state_pair tm name0 name1 = new_basic_definition(mk_eq(tm,
-  mk_bmap (mk_small_numeral (state_of_name name0))
-          (mk_small_numeral (state_of_name name1))));;
-let defn_state_q tm n0 n1 n2 n3 = new_basic_definition(mk_eq(tm,
-  mk_bmap (mk_bmap (mk_small_numeral (state_of_name n0))
-                   (mk_small_numeral (state_of_name n1)))
-          (mk_bmap (mk_small_numeral (state_of_name n2))
-                   (mk_small_numeral (state_of_name n3)))));;
-let dec_init_S = defn_for_state `dec_init:num` "dec.init";;
-let dec_check_S = defn_for_state `dec_check:num` "dec.check";;
-let dec_restore_S = defn_for_state `dec_restore:num` "dec.restore";;
-let dec_scan_S = defn_state_pair `dec_scan:bool->num` "dec.scan_0" "dec.scan_1";;
-let dec_scan_done_S = defn_for_state `dec_scan_done:num` "dec.scan_done";;
-let dec_shift_S = defn_state_pair `dec_shift:bool->num` "dec.shift_0" "dec.shift_1";;
-let inc_shift_S = defn_state_pair `inc_shift:bool->num` "inc.shift_0" "inc.shift_1";;
-let return_S = defn_state_q `return:bool->bool->num`
-    "return.0" "return.1" "return2.0" "return2.1";; 
-let dispatchroot_S = defn_for_state `dispatchroot:num` "main()[]";;
-let dispatch_S = defn_state_pair `dispatch:bool->num` "dispatch.0.carry" "nextstate_2";;
+let nmap_EXPAND limit th =
+  let rec iter i = if i >= limit then [] else
+    CONV_RULE (GEN_REWRITE_CONV TOP_SWEEP_CONV [nmap_CLAUSES])
+      (AP_THM th (mk_small_numeral i))::iter (i+1) in
+  end_itlist CONJ (iter 0) ;;
+
+let NAMED_STATES =
+  let nn = mk_small_numeral o state_of_name in
+  let defs1 tmn stn _ = new_basic_definition(
+    mk_eq(mk_var(tmn,`:num`),nn stn)) in
+  let defs2 tmn s0 s1 _ = new_basic_definition(
+    mk_eq(mk_var(tmn,`:bool->num`),mk_bmap (nn s0) (nn s1))) in
+  let defs4 tmn s0 s1 s2 s3 _ = new_basic_definition(
+    mk_eq(mk_var(tmn,`:bool->bool->num`),
+      mk_bmap (mk_bmap (nn s0) (nn s1)) (mk_bmap (nn s2) (nn s3)))) in
+  let defsn tmn sp _ =
+    let rec states n =
+      try let s = nn (sp ^ string_of_int n) in (n,s)::states (n+1)
+      with Failure _ -> [] in
+    let stn = states 0 in
+    nmap_EXPAND (length stn) (new_basic_definition(
+            mk_eq(mk_var(tmn,`:num->num`),mk_nmap_imprecise `0` stn))) in
+  let clauses = [
+    defs1 "dec_init" "dec.init"; defs1 "dec_check" "dec.check";
+    defs1 "dec_restore" "dec.restore"; defs1 "dec_scan_done" "dec.scan_done";
+    defs2 "dec_scan" "dec.scan_0" "dec.scan_1";
+    defs2 "dec_shift" "dec.shift_0" "dec.shift_1";
+    defs2 "inc_shift" "inc.shift_0" "inc.shift_1";
+    defs4 "return" "return.0" "return.1" "return2.0" "return2.1";
+    defs2 "nextstate" "dispatch.0.carry" "nextstate_2";
+    defs1 "dispatchroot" "main()[]";
+    defs1 "init_f1" "init.f1"; defs1 "init_f2" "init.f2";
+    defs2 "init_scan" "init.scan_0" "init.scan_1";
+    defs1 "reg_incr_last" "reg_incr.-1"; defs1 "reg_decr_last" "reg_decr.-1";
+    defsn "reg_incr" "reg_incr."; defsn "reg_decr" "reg_decr."] in
+  let conjs = end_itlist CONJ (mapfilter (fun c -> c ()) clauses) in
+  CONV_RULE (REWRITE_CONV [bmap_EXPAND; CONJ_ACI]) conjs ;;
+
+let NAMED_BEHAVIOR =
+  CONV_RULE (REWRITE_CONV [GSYM NAMED_STATES]) (end_itlist CONJ
+    (map (fun e -> CONJ (BEHAVIOR (rhs e) `F`) (BEHAVIOR (rhs e) `T`))
+         (conjuncts (concl NAMED_STATES))));;
 
 (* register operations
 
@@ -346,32 +380,20 @@ let dispatch_S = defn_state_pair `dispatch:bool->num` "dispatch.0.carry" "nextst
 let REG = define`REG n xs = APPEND (REPLICATE (SUC n) T) (CONS F xs)`;;
 let REGFILE = define`REGFILE ns xs = ITLIST REG ns xs`;;
 let OPSEG = define`OPSEG ns cruft = CONS F (CONS F (ITLIST REG ns cruft))`;;
-let DEC_CRUFT = define`DEC_CRUFT n (creg,cbit) =
-        if n = 0 then creg,cbit else creg,CONS F cbit`;;
 let (REGLIKE, REGLIKE_IND, REGLIKE_CASES) = new_inductive_definition
  `REGLIKE F [F] /\
   (!bs. REGLIKE F bs ==> REGLIKE T (CONS F bs)) /\
   (!b bs. REGLIKE T bs ==> REGLIKE b (CONS T bs))`;;
 
-(* TODO automate *)
-let return_LEMMA = prove(
-`return skip F,lzip_tape (CONS F ls) rs -->_w dispatch skip,lzip_tape ls (CONS F rs) /\
- return skip F,lzip_tape (CONS T ls) rs -->_w return skip T,lzip_tape ls (CONS T rs) /\
- return skip T,lzip_tape (CONS F ls) rs -->_w return skip F,lzip_tape ls (CONS F rs) /\
- return skip T,lzip_tape (CONS T ls) rs -->_w return skip T,lzip_tape ls (CONS T rs)`,
-  BOOL_CASES_TAC `skip:bool` THEN REPEAT CONJ_TAC THEN MATCH_MP_TAC tm_evolves_BASE THEN
-  REWRITE_TAC[dispatch_S; return_S; gtm_step_DEF; zip_write; zip_read; bmap_CLAUSES] THEN
-  CONV_TAC transition_table_CONV THEN SIMP_TAC[LET_DEF;ARITH;LET_END_DEF; zip_shift]);;
-
 let return_THM = prove(
 `!b rf. REGLIKE b rf ==> !left right. (return skip b, lzip_tape (APPEND rf left) right) -->_w
- (dispatch skip, lzip_tape left (APPEND (REVERSE rf) right))`,
+ (nextstate skip, lzip_tape left (APPEND (REVERSE rf) right))`,
  MATCH_MP_TAC REGLIKE_IND THEN
  REPEAT STRIP_TAC THEN REWRITE_TAC[APPEND; REVERSE; GSYM APPEND_ASSOC] THENL [
    ALL_TAC;
    TRANS_TAC (GEN_ALL tm_evolves_TRANS) `return skip F,lzip_tape (APPEND bs left) (CONS F right)`;
    TRANS_TAC (GEN_ALL tm_evolves_TRANS) `return skip T,lzip_tape (APPEND bs left) (CONS T right)`] THEN
- TRY (BOOL_CASES_TAC `b:bool`) THEN ASM_REWRITE_TAC[return_LEMMA]);;
+ BOOL_CASES_TAC `b:bool` THEN ASM_REWRITE_TAC[] THEN BOOL_CASES_TAC `skip:bool` THEN REWRITE_TAC[NAMED_BEHAVIOR]);;
 
 (*
 `!P. (!l b. (P F l ==> P T (CONS F l)) /\ (P T l ==> P b (CONS T l)))
