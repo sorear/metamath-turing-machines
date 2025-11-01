@@ -66,6 +66,16 @@ let DROP_APPEND_GE = prove(
   INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF; APPEND; LENGTH;
     SUB; LE_SUC; SUB_PRESUC; TL] THEN REWRITE_TAC[LE; NOT_SUC]);;
 
+let list_2INDUCT = prove(
+ `!(P:A list -> bool). P [] /\ (!a0. P [a0]) /\ (!a0 a1 l.
+        P (CONS a1 l) /\ P l ==> P (CONS a0 (CONS a1 l))) ==> (!l. P l)`,
+  INTRO_TAC "!P; i0 i1 i2; !l" THEN WF_INDUCT_TAC `LENGTH (l:A list)` THEN
+  POP_ASSUM MP_TAC THEN
+  STRUCT_CASES_TAC (SPEC_ALL list_CASES) THEN ASM_REWRITE_TAC[] THEN
+  STRUCT_CASES_TAC (SPEC `t:A list` list_CASES) THEN ASM_REWRITE_TAC[] THEN
+  STRIP_TAC THEN USE_THEN "i2" MATCH_MP_TAC THEN
+  CONJ_TAC THEN POP_ASSUM MATCH_MP_TAC THEN REWRITE_TAC[LENGTH] THEN ARITH_TAC);;
+
 (* preliminaries - fast maps
 
    hol-light's built in definition by cases is far, far too slow to handle our
@@ -438,7 +448,29 @@ let IS_REGLIKE'3_PARTIAL = prove(
 let IS_REGLIKE'3_T = prove(
  `REGLIKE'3 T (REGFILE' (CONS n ns))`,
  IMP_REWRITE_TAC[REGFILE_CLAUSES; REPLICATE; APPEND; REGLIKE'3;
-   IS_REGLIKE'3_PARTIAL]);
+   IS_REGLIKE'3_PARTIAL]);;
+
+let (WITH_ASSUMS:tactic->tactic) = fun tt (asl,w) ->
+   (REPEAT (POP_ASSUM MP_TAC) THEN tt THEN
+     REPLICATE_TAC (length asl) DISCH_TAC) (asl,w) ;;
+let CRUFT_EX_THM = prove(
+ `!cruft. ?crs cbs. (APPEND cruft [F; F]) =
+    (APPEND (REGFILE' crs) (CONS F cbs))`,
+  MATCH_MP_TAC list_2INDUCT THEN REPEAT STRIP_TAC THENL [
+    EXISTS_TAC `[]:num list` THEN EXISTS_TAC `[F]`;
+    BOOL_CASES_TAC `a0:bool` THENL [
+      EXISTS_TAC `[0]` THEN EXISTS_TAC `[]:bool list`;
+      EXISTS_TAC `[]:num list` THEN EXISTS_TAC `[F;F]`];
+    WITH_ASSUMS (BOOL_CASES_TAC `a0:bool`) THENL [
+      WITH_ASSUMS (BOOL_CASES_TAC `a1:bool`) THENL [
+        WITH_ASSUMS (STRUCT_CASES_TAC (ISPEC `crs:num list` list_CASES)) THENL [
+          WITH_ASSUMS (SIMP_TAC [REGFILE_CLAUSES; injectivity "list"; APPEND]);
+          EXISTS_TAC `CONS (SUC h) t` THEN EXISTS_TAC `cbs:bool list`];
+        EXISTS_TAC `CONS 0 crs'` THEN EXISTS_TAC `cbs':bool list`];
+      EXISTS_TAC `[]:num list` THEN EXISTS_TAC `CONS a1 (APPEND cruft [F;F])`]] THEN
+
+  RULE_ASSUM_TAC SYM THEN
+  REPEAT (POP_ASSUM MP_TAC) THEN SIMP_TAC[APPEND; REGFILE_CLAUSES; REPLICATE]);;
 
 let ALL_BOOL_CASES_TAC g = MAP_EVERY BOOL_CASES_TAC
   (filter (fun v -> type_of v = bool_ty) (frees (snd g))) g;;
@@ -503,6 +535,46 @@ let init_THM = prove(
   return F F,lzip_tape left
     (CONS F (APPEND (REGFILE' rs) (CONS T cruft)))`,
   MP_TAC (SPECL [`F`; `REGFILE' rs`] init_IND) THEN SIMP_TAC[IS_REGLIKE'3]);;
+
+let EVOLVES_TO_IMPS_TAC = RULE_ASSUM_TAC
+  (fun a -> try GEN_ALL (GMATCH_MP EVOLVE_TO_IMP a) with Failure _ -> a) ;;
+let regselect_THM = prove(
+ `(!left. instate,rzip_tape (CONS F left) (APPEND (REGFILE' rs) (CONS F cruft)) -->_w
+     return skip F,lzip_tape left (CONS F (APPEND (REGFILE' rs') cruft'))) ==>
+  (!l r. selstate,rzip_tape l (CONS F r) -->_w instate,rzip_tape (CONS F l) r) ==>
+  (!l r. selstate,rzip_tape l (CONS T r) -->_w selstate,rzip_tape (CONS T l) r) ==>
+  selstate,rzip_tape (CONS F left) (APPEND (REGFILE' (CONS r rs)) (CONS F cruft)) -->_w
+    return skip F,lzip_tape left (CONS F (APPEND (REGFILE' (CONS r rs')) cruft'))`,
+
+ REWRITE_TAC[REGFILE_CLAUSES; APPEND; REPLICATE; GSYM APPEND_ASSOC] THEN
+ REPEAT STRIP_TAC THEN EVOLVES_TO_IMPS_TAC THEN (ASM IMP_REWRITE_TAC)[] THEN
+ TRANS_TAC (GEN_ALL tm_evolves_TRANS)
+   `return skip T,lzip_tape (CONS F left) (CONS T
+     (APPEND (REPLICATE r T) (CONS F (APPEND (REGFILE' rs') cruft'))))` THEN
+ CONJ_TAC THENL [
+   SPEC_TAC (`CONS F left`,`left':bool list`) THEN SPEC_TAC(`r:num`,`r:num`) THEN INDUCT_TAC;
+   ALL_TAC] THEN
+
+ WITH_ASSUMS (BOOL_CASES_TAC `skip:bool`) THEN EVOLVES_TO_IMPS_TAC THEN
+ (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; NAMED_BEHAVIOR_IMP]);;
+
+(*
+let regentry_THM = prove(
+ `(!left. instate,rzip_tape (CONS F left) (APPEND (REGFILE' rs) (CONS F cruft)) -->_w
+     return skip F,lzip_tape left (CONS F (APPEND (REGFILE' rs') cruft'))) ==>
+  (!l r. sel1state,rzip_tape l (CONS F r) -->_w sel2state,rzip_tape (CONS F l) r) ==>
+  (!l r. sel2state,rzip_tape l (CONS F r) -->_w instate,rzip_tape (CONS F l) r) ==>
+  ?cruft'. sel1state,rzip_tape left (OPSEG' rs cruft) -->_w
+  nextstate skip,lzip_tape left (OPSEG' rs' cruft')`,
+ REWRITE_TAC[OPSEG']
+ MP_TAC (SPEC_ALL CRUFT_EX_THM)
+ REPEAT STRIP_TAC
+*)
+
+let mk_selected_thm state base =
+  CONV_RULE (REWRITE_CONV[NAMED_BEHAVIOR]) (INST [state,`selstate:num`]
+    (MATCH_MP regselect_THM (GEN `left:bool list` base)));;
+ 
 
 (* dispatch basics
 
