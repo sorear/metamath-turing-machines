@@ -371,11 +371,23 @@ let NAMED_BEHAVIOR =
     (map (fun e -> CONJ (BEHAVIOR (rhs e) `F`) (BEHAVIOR (rhs e) `T`))
          (conjuncts (concl NAMED_STATES))));;
 
+let GMATCH_MP f v = let vars,_ = strip_forall (concl v) in
+  GENL vars (MATCH_MP f (SPEC_ALL v)) ;;
+let EVOLVE_TO_IMP = MATCH_MP (TAUT `((a /\ b) ==> c) ==> a ==> (b ==> c = T)`) tm_evolves_TRANS;;
+let NAMED_BEHAVIOR_IMP =
+   CONJ NAMED_BEHAVIOR (end_itlist CONJ (map (MATCH_MP EVOLVE_TO_IMP)
+     (CONJUNCTS (CONV_RULE (REWRITE_CONV [CONJ_ACI]) NAMED_BEHAVIOR))));;
+
 (* register operations
 
    start by proving single steps, use induction to build the inner loops, then
    inductively construct the behavior of primitive register operations at the
-   dispatch/register interface boundary *)
+   dispatch/register interface boundary
+   
+   initial attempts to prove this used a "pseudo big step" approach where all
+   states were proven to evolve to the nextstate interface; this made use of
+   implicational rewriting but had poor modularity and required heavy use of
+   REVERSE; current approach does two-sided recursion to avoid reverses *)
 
 let REG = define`REG n xs = APPEND (REPLICATE (SUC n) T) (CONS F xs)`;;
 let REGFILE = define`REGFILE ns xs = ITLIST REG ns xs`;;
@@ -384,16 +396,90 @@ let (REGLIKE, REGLIKE_IND, REGLIKE_CASES) = new_inductive_definition
  `REGLIKE F [F] /\
   (!bs. REGLIKE F bs ==> REGLIKE T (CONS F bs)) /\
   (!b bs. REGLIKE T bs ==> REGLIKE b (CONS T bs))`;;
+let (REGLIKE', REGLIKE_IND', REGLIKE_CASES') = new_inductive_definition
+ `REGLIKE' F [] /\
+  (!bs. REGLIKE' F bs ==> REGLIKE' T (CONS F bs)) /\
+  (!b bs. REGLIKE' T bs ==> REGLIKE' b (CONS T bs))`;;
+let (REGLIKE'', REGLIKE_IND'', REGLIKE_CASES'') = new_inductive_definition
+ `REGLIKE'' F [] /\
+  (!b v bs. REGLIKE' v bs /\ (b \/ v) ==> REGLIKE'' b (CONS v bs))`;;
+let (REGLIKE'3, REGLIKE_IND'3, REGLIKE_CASES'3) = new_inductive_definition
+ `REGLIKE'3 F [] /\
+  (!x b bs. REGLIKE'3 b bs /\ (b \/ x) ==> REGLIKE'3 x (CONS b bs))`;;
+
+let ALL_BOOL_CASES_TAC g = MAP_EVERY BOOL_CASES_TAC
+  (filter (fun v -> type_of v = bool_ty) (frees (snd g))) g;;
+
+let incr_THM_WIP = prove(
+ `!bs. REGLIKE'3 T bs ==> !left.
+   inc_shift T,(rzip_tape left (APPEND bs (CONS F cruft))) -->_w
+   return F T,(lzip_tape left (CONS T (APPEND bs cruft)))`,
+  SPEC_TAC(`T`,`s:bool`) THEN MATCH_MP_TAC REGLIKE_IND'3 THEN CONJ_TAC THEN
+  REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
+  TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP EVOLVE_TO_IMP)) THEN
+  (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
+
+let decr_THM_WIP = prove(
+ `!x bs. REGLIKE'3 x bs ==> !left.
+   dec_scan x,(rzip_tape (CONS x left) (APPEND bs (CONS F cruft))) -->_w
+   dec_shift x,(lzip_tape left (APPEND bs (CONS F (CONS F cruft))))`,
+  MATCH_MP_TAC REGLIKE_IND'3 THEN CONJ_TAC THEN
+  REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
+  TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP EVOLVE_TO_IMP)) THEN
+  (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
+
+let init_THM_WIP = prove(
+ `!x bs. REGLIKE'3 x bs ==> !left.
+   init_scan x,rzip_tape (CONS x left) (APPEND bs (CONS F cruft)) -->_w
+   return F x,lzip_tape left (CONS x (APPEND bs (CONS T cruft)))`,
+  MATCH_MP_TAC REGLIKE_IND'3 THEN CONJ_TAC THEN
+  REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
+  TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP EVOLVE_TO_IMP)) THEN
+  (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
+
+(*
+ `!rs left right.
+     return skip F,lzip_tape (REGFILE rs (CONS F left)) (CONS F right) -->_w
+     nextstate skip,lzip_tape left (CONS F (CONS F (REGFILE (REVERSE rs) right)))`
+  ALL_BOOL_CASES_TAC THEN REWRITE_TAC[REGFILE] THEN LIST_INDUCT_TAC THEN
+  IMP_REWRITE_TAC[ITLIST; NAMED_BEHAVIOR_IMP; REG; REPLICATE; APPEND; REVERSE; ITLIST_APPEND] THEN
+  SPEC_TAC(`h:num`,`h:num`) THEN INDUCT_TAC THEN
+  (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; NAMED_BEHAVIOR_IMP]
+
+  THEN (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; NAMED_BEHAVIOR_IMP]
+*)
 
 let return_THM = prove(
-`!b rf. REGLIKE b rf ==> !left right. (return skip b, lzip_tape (APPEND rf left) right) -->_w
- (nextstate skip, lzip_tape left (APPEND (REVERSE rf) right))`,
- MATCH_MP_TAC REGLIKE_IND THEN
- REPEAT STRIP_TAC THEN REWRITE_TAC[APPEND; REVERSE; GSYM APPEND_ASSOC] THENL [
-   ALL_TAC;
-   TRANS_TAC (GEN_ALL tm_evolves_TRANS) `return skip F,lzip_tape (APPEND bs left) (CONS F right)`;
-   TRANS_TAC (GEN_ALL tm_evolves_TRANS) `return skip T,lzip_tape (APPEND bs left) (CONS T right)`] THEN
- BOOL_CASES_TAC `b:bool` THEN ASM_REWRITE_TAC[] THEN BOOL_CASES_TAC `skip:bool` THEN REWRITE_TAC[NAMED_BEHAVIOR]);;
+`!b rf. REGLIKE' b rf ==> !left right.
+   return skip b,lzip_tape (APPEND rf (CONS F left)) right -->_w
+   nextstate skip,lzip_tape left (CONS F (APPEND (REVERSE rf) right))`,
+ BOOL_CASES_TAC `skip:bool` THEN MATCH_MP_TAC REGLIKE_IND' THEN
+ REPEAT STRIP_TAC THEN REWRITE_TAC[REVERSE; APPEND; GSYM APPEND_ASSOC] THEN
+ ALL_BOOL_CASES_TAC THEN IMP_REWRITE_TAC [NAMED_BEHAVIOR_IMP]);;
+
+let dec_shift_THM = prove(
+ `REGLIKE' F rf2 ==> !b rf. REGLIKE' b rf ==> !left right.
+  dec_shift b,lzip_tape (APPEND rf (CONS F
+    (APPEND rf2 (CONS F left)))) right -->_w
+  nextstate T,lzip_tape left (CONS F (APPEND (REVERSE rf2)
+    (APPEND (REVERSE rf) (CONS b right))))`,
+  DISCH_TAC THEN MATCH_MP_TAC REGLIKE_IND' THEN REPEAT STRIP_TAC THEN
+  ALL_BOOL_CASES_TAC THEN (ASM IMP_REWRITE_TAC)[APPEND; REVERSE;
+    GSYM APPEND_ASSOC; NAMED_BEHAVIOR_IMP; return_THM]);;
+
+(*
+ `!b rf. REGLIKE' b rf ==> !left right.
+  inc_shift b,rzip_tape left (APPEND rf (CONS F right)) -->_w
+  return F F,lzip_tape (TL (APPEND (REVERSE rf) (CONS b left))) (CONS F right)`
+  MATCH_MP_TAC REGLIKE_IND' THEN REPEAT STRIP_TAC THEN ALL_BOOL_CASES_TAC THEN
+  IMP_REWRITE_TAC[APPEND; REVERSE; TL; GSYM APPEND_ASSOC; NAMED_BEHAVIOR_IMP]
+
+ `!b rf. REGLIKE' b rf ==> !left right.
+  inc_shift b,rzip_tape (CONS F (APPEND rf2 (CONS F left))) (APPEND rf (CONS F right)) -->_w
+  nextstate F,lzip_tape left (CONS F (APPEND (REVERSE rf2) (CONS b (APPEND rf right))))`
+  MATCH_MP_TAC REGLIKE_IND' THEN REPEAT STRIP_TAC THEN ALL_BOOL_CASES_TAC THEN
+  IMP_REWRITE_TAC[APPEND; NAMED_BEHAVIOR_IMP]
+*)
 
 (*
 `!P. (!l b. (P F l ==> P T (CONS F l)) /\ (P T l ==> P b (CONS T l)))
