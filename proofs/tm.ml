@@ -51,45 +51,57 @@ let _ = unset_verbose_symbols();;
 
 (* preliminaries - function and list handling *)
 
+override_interface("::",`CONS:A->A list->A list`);;
+parse_as_infix("::",(13,"right"));;
+override_interface("++",`APPEND:A list->A list->A list`);;
+parse_as_infix("++",(13,"right"));;
+unspaced_binops := "::" :: !unspaced_binops;;
+
 let NUM_OF_INT_2 = prove(`&0 <= x ==> ?z. x:int = &z`, REWRITE_TAC[EXISTS_THM;NUM_OF_INT;num_of_int] THEN MESON_TAC[]);;
 
 let ITERF_DEF = define`ITERF 0 f (x:A) = x /\ ITERF (SUC n) f x = f (ITERF n f x)`;;
 let ITERF_ADD = prove(`!m n f (x:A). ITERF (m + n) f x = ITERF m f (ITERF n f x)`,
   INDUCT_TAC THEN ASM_REWRITE_TAC[ADD_CLAUSES;ITERF_DEF]);;
 
-let TAKE_DEF = define`TAKE 0 l = [] /\ TAKE (SUC i) l = (CONS (HD l:A) (TAKE i (TL l)))`;;
-let DROP_DEF = define`DROP 0 l = l /\ DROP (SUC i) l = DROP i (TL l:A list)`;;
+let TAKE_DEF = define`TAKE 0 (l:A list) = [] /\
+  TAKE (SUC i) l = HD l :: TAKE i (TL l)`;;
+let DROP_DEF = define`DROP 0 (l:A list) = l /\
+  DROP (SUC i) l = DROP i (TL l:A list)`;;
 
 let LENGTH_TAKE = prove(`!i l. LENGTH (TAKE i l:A list) = i`,
   INDUCT_TAC THEN ASM_REWRITE_TAC[TAKE_DEF;LENGTH]);;
-let LENGTH_DROP = prove(`!i (l:A list). i <= LENGTH l ==> LENGTH (DROP i l) = LENGTH l - i`,
-  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF;LENGTH;SUB_0;TL;LE_SUC;SUB_SUC;LE;NOT_SUC]);;
+let LENGTH_DROP = prove(
+ `!i (l:A list). i <= LENGTH l ==> LENGTH (DROP i l) = LENGTH l - i`,
+  INDUCT_TAC THEN LIST_INDUCT_TAC THEN
+  ASM_REWRITE_TAC[DROP_DEF; LENGTH; SUB_0; TL; LE_SUC; SUB_SUC; LE; NOT_SUC]);;
 
 let EL_TAKE = prove(`!i j l. i < j ==> EL i (TAKE j l) = (EL i l:A)`,
   REPEAT INDUCT_TAC THEN ASM_REWRITE_TAC[TAKE_DEF; EL; HD; TL; LT_SUC; LT]);;
 let EL_DROP = prove(`!j l. EL i (DROP j l) = EL (i + j) (l:A list)`,
   INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF;ADD_CLAUSES;EL]);;
 
-let TAKE_DROP = prove(`!i l. i <= LENGTH l ==> APPEND (TAKE i l) (DROP i l) = l`,
-  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_SIMP_TAC[TAKE_DEF;DROP_DEF;APPEND;LENGTH;LE_SUC;LE;NOT_SUC;HD;TL]);;
+let TAKE_DROP = prove(
+ `!i (l:A list). i <= LENGTH l ==> TAKE i l ++ DROP i l = l`,
+  INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_SIMP_TAC[TAKE_DEF; DROP_DEF; APPEND;
+    LENGTH; LE_SUC; LE; NOT_SUC; HD; TL]);;
 
-let TAKE_APPEND_EQ = prove(`!a b. TAKE (LENGTH (a:A list)) (APPEND a b) = a`,
+let TAKE_APPEND_EQ = prove(`!a b. TAKE (LENGTH (a:A list)) (a ++ b) = a`,
   LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[LENGTH; TAKE_DEF; APPEND; HD; TL]);;
 
 let DROP_APPEND_GE = prove(
- `!x a b. LENGTH a <= x ==> DROP x (APPEND (a:A list) b) = DROP (x - LENGTH a) b`,
+ `!x a b. LENGTH a <= x ==> DROP x (a:A list ++ b) = DROP (x - LENGTH a) b`,
   INDUCT_TAC THEN LIST_INDUCT_TAC THEN ASM_REWRITE_TAC[DROP_DEF; APPEND; LENGTH;
     SUB; LE_SUC; SUB_PRESUC; TL] THEN REWRITE_TAC[LE; NOT_SUC]);;
 
 let list_2INDUCT = prove(
  `!(P:A list -> bool). P [] /\ (!a0. P [a0]) /\ (!a0 a1 l.
-        P (CONS a1 l) /\ P l ==> P (CONS a0 (CONS a1 l))) ==> (!l. P l)`,
+        P (a1::l) /\ P l ==> P (a0::a1::l)) ==> !l. P l`,
   INTRO_TAC "!P; i0 i1 i2; !l" THEN WF_INDUCT_TAC `LENGTH (l:A list)` THEN
   POP_ASSUM MP_TAC THEN
   STRUCT_CASES_TAC (SPEC_ALL list_CASES) THEN ASM_REWRITE_TAC[] THEN
   STRUCT_CASES_TAC (SPEC `t:A list` list_CASES) THEN ASM_REWRITE_TAC[] THEN
-  STRIP_TAC THEN USE_THEN "i2" MATCH_MP_TAC THEN
-  CONJ_TAC THEN POP_ASSUM MATCH_MP_TAC THEN REWRITE_TAC[LENGTH] THEN ARITH_TAC);;
+  STRIP_TAC THEN USE_THEN "i2" MATCH_MP_TAC THEN CONJ_TAC THEN
+  POP_ASSUM MATCH_MP_TAC THEN REWRITE_TAC[LENGTH] THEN ARITH_TAC);;
 
 (* preliminaries - fast maps
 
@@ -238,7 +250,7 @@ let list_tape_LAPPEND = prove(
 
 let list_tape_WRITE = prove(
  `tp < LENGTH l ==> write b (list_tape l (&tp)) =
-      list_tape (APPEND (TAKE tp l) (CONS b (DROP (SUC tp) l))) (&tp)`,
+      list_tape (TAKE tp l ++ b :: DROP (SUC tp) l) (&tp)`,
  SIMP_TAC[tape_write_DEF; list_tape_DEF] THEN DISCH_TAC THEN ABS_TAC THEN
  ASM_CASES_TAC `&0 <= &tp + i` THENL [
    POP_ASSUM (DESTRUCT_TAC "@j. eq" o MATCH_MP NUM_OF_INT_2) THEN
@@ -254,20 +266,20 @@ let list_tape_WRITE = prove(
    COND_CASES_TAC THEN ASM_ARITH_TAC]);;
 
 let lzip_tape = define`lzip_tape ls rs =
-        list_tape (APPEND (REVERSE ls) rs) (&(LENGTH ls) - &1)`;;
+        list_tape (REVERSE ls ++ rs) (&(LENGTH ls) - &1)`;;
 let rzip_tape = define`rzip_tape ls rs =
-        list_tape (APPEND (REVERSE ls) rs) (&(LENGTH ls))`;;
+        list_tape (REVERSE ls ++ rs) (&(LENGTH ls))`;;
 let zip_shift = prove(
- `shift (-- &1) (lzip_tape (CONS l ls) rs) = lzip_tape ls (CONS l rs) /\
-  shift    (&1) (rzip_tape ls (CONS r rs)) = rzip_tape (CONS r ls) rs /\
+ `shift (-- &1) (lzip_tape (l :: ls) rs) = lzip_tape ls (l :: rs) /\
+  shift    (&1) (rzip_tape ls (r :: rs)) = rzip_tape (r :: ls) rs /\
   shift (-- &1) (rzip_tape ls rs) = lzip_tape ls rs /\
   shift    (&1) (lzip_tape ls rs) = rzip_tape ls rs`,
   SIMP_TAC[lzip_tape; rzip_tape; list_tape_SHIFT; REVERSE; GSYM APPEND_ASSOC;
     LENGTH; APPEND] THEN REPEAT CONJ_TAC THEN AP_TERM_TAC THEN ARITH_TAC);;
 
 let zip_write = prove(
- `write b (lzip_tape (CONS l ls) rs) = lzip_tape (CONS b ls) rs /\
-  write b (rzip_tape ls (CONS r rs)) = rzip_tape ls (CONS b rs)`,
+ `write b (lzip_tape (l::ls) rs) = lzip_tape (b::ls) rs /\
+  write b (rzip_tape ls (r::rs)) = rzip_tape ls (b::rs)`,
   SIMP_TAC[lzip_tape; rzip_tape] THEN
   IMP_REWRITE_TAC[INT_OF_NUM_SUB; list_tape_WRITE] THEN
   SIMP_TAC[LENGTH; ADD1; LE_ADD; LE_ADDR; LENGTH_APPEND; ADD_SUB; REVERSE;
@@ -285,7 +297,7 @@ let zip_extend = prove(
   CONV_TAC INT_REDUCE_CONV THEN SIMP_TAC[APPEND]);;
 
 let zip_extend' = prove(
-  `rzip_tape ls rs = rzip_tape ls (APPEND rs [F])`,
+  `rzip_tape ls rs = rzip_tape ls (rs ++ [F])`,
   SIMP_TAC[rzip_tape;list_tape_RAPPEND;APPEND_ASSOC]);;
 
 let zip_read = prove(
@@ -339,8 +351,8 @@ let BEHAVIOR =
   let cv = REWRITE_CONV[gtm_step_DEF;zip_read] THENC
     transition_table_CONV THENC let_CONV THENC NUM_REDUCE_CONV THENC
     REWRITE_CONV[zip_write; zip_shift] in
-  let tm = `gtm_step transition_table (st,lzip_tape (CONS b ls) rs),
-            gtm_step transition_table (st,rzip_tape ls (CONS b rs))` in
+  let tm = `gtm_step transition_table (st,lzip_tape (b :: ls) rs),
+            gtm_step transition_table (st,rzip_tape ls (b :: rs))` in
   fun st b ->
     let tm' = (vsubst [st,`st:num`;b,`b:bool`] tm) in
     CONJ (MATCH_MP tm_evolves_BASE (cv (lhand tm')))
@@ -421,16 +433,15 @@ let NAMED_BEHAVIOR_IMP =
    implicational rewriting but had poor modularity and required heavy use of
    REVERSE; current approach does two-sided recursion to avoid reverses *)
 
-let REG = define`REG n xs = APPEND (REPLICATE (SUC n) T) (CONS F xs)`;;
+let REG = define`REG n xs = APPEND (REPLICATE (SUC n) T) (F :: xs)`;;
 let REGFILE = define `REGFILE ns = ITLIST REG ns []`;;
-let OPSEG = define`OPSEG ns cruft = CONS F (CONS F (APPEND (REGFILE ns) cruft))`;;
+let OPSEG = define`OPSEG ns cruft = F :: F :: REGFILE ns ++ cruft`;;
 let (REGLIKE, REGLIKE_IND, REGLIKE_CASES) = new_inductive_definition
  `REGLIKE F [] /\
-  (!x b bs. REGLIKE b bs /\ (b \/ x) ==> REGLIKE x (CONS b bs))`;;
+  (!x b bs. REGLIKE b bs /\ (b \/ x) ==> REGLIKE x (b :: bs))`;;
 
 let REGFILE_CLAUSES = prove(
- `REGFILE [] = [] /\ REGFILE (CONS n ns) =
-    APPEND (REPLICATE (SUC n) T) (CONS F (REGFILE ns))`,
+ `REGFILE [] = [] /\ REGFILE (n::ns) = REPLICATE (SUC n) T ++ F :: REGFILE ns`,
   REWRITE_TAC[REGFILE; ITLIST; REG]);;
 
 let IS_REGLIKE = prove(
@@ -441,11 +452,11 @@ let IS_REGLIKE = prove(
  (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; REGLIKE]);;
 
 let IS_REGLIKE_PARTIAL = prove(
- `!n. REGLIKE T (APPEND (REPLICATE n T) (CONS F (REGFILE ns)))`,
+ `!n. REGLIKE T (REPLICATE n T ++ F::REGFILE ns)`,
  INDUCT_TAC THEN IMP_REWRITE_TAC[REPLICATE; APPEND; REGLIKE; IS_REGLIKE]);;
 
 let IS_REGLIKE_T = prove(
- `REGLIKE T (REGFILE (CONS n ns))`,
+ `REGLIKE T (REGFILE (n::ns))`,
  IMP_REWRITE_TAC[REGFILE_CLAUSES; REPLICATE; APPEND; REGLIKE;
    IS_REGLIKE_PARTIAL]);;
 
@@ -453,8 +464,7 @@ let (WITH_ASSUMS:tactic->tactic) = fun tt (asl,w) ->
    (REPEAT (POP_ASSUM MP_TAC) THEN tt THEN
      REPLICATE_TAC (length asl) DISCH_TAC) (asl,w) ;;
 let CRUFT_EX_THM = prove(
- `!cruft. ?crs cbs. (APPEND cruft [F; F]) =
-    (APPEND (REGFILE crs) (CONS F cbs))`,
+ `!cruft. ?crs cbs. cruft ++ [F; F] = REGFILE crs ++ F::cbs`,
   MATCH_MP_TAC list_2INDUCT THEN REPEAT STRIP_TAC THENL [
     EXISTS_TAC `[]:num list` THEN EXISTS_TAC `[F]`;
     BOOL_CASES_TAC `a0:bool` THENL [
@@ -464,9 +474,9 @@ let CRUFT_EX_THM = prove(
       WITH_ASSUMS (BOOL_CASES_TAC `a1:bool`) THENL [
         WITH_ASSUMS (STRUCT_CASES_TAC (ISPEC `crs:num list` list_CASES)) THENL [
           WITH_ASSUMS (SIMP_TAC [REGFILE_CLAUSES; injectivity "list"; APPEND]);
-          EXISTS_TAC `CONS (SUC h) t` THEN EXISTS_TAC `cbs:bool list`];
-        EXISTS_TAC `CONS 0 crs'` THEN EXISTS_TAC `cbs':bool list`];
-      EXISTS_TAC `[]:num list` THEN EXISTS_TAC `CONS a1 (APPEND cruft [F;F])`]] THEN
+          EXISTS_TAC `SUC h::t` THEN EXISTS_TAC `cbs:bool list`];
+        EXISTS_TAC `0::crs'` THEN EXISTS_TAC `cbs':bool list`];
+      EXISTS_TAC `[]:num list` THEN EXISTS_TAC `a1::cruft ++ [F; F]`]] THEN
 
   RULE_ASSUM_TAC SYM THEN
   REPEAT (POP_ASSUM MP_TAC) THEN SIMP_TAC[APPEND; REGFILE_CLAUSES; REPLICATE]);;
@@ -474,108 +484,100 @@ let CRUFT_EX_THM = prove(
 let ALL_BOOL_CASES_TAC g = MAP_EVERY BOOL_CASES_TAC
   (filter (fun v -> type_of v = bool_ty) (frees (snd g))) g;;
 
-let REGFILE_SUC = prove(
- `REGFILE (CONS (SUC n) ns) = CONS T (REGFILE (CONS n ns))`,
+let REGFILE_SUC = prove(`REGFILE (SUC n::ns) = T::REGFILE (n::ns)`,
   REWRITE_TAC[REGFILE; ITLIST; REG; REPLICATE; APPEND]);;
 
 let incr_IND = prove(
  `!bs. REGLIKE T bs ==> !left.
-   inc_shift T,(rzip_tape left (APPEND bs (CONS F cruft))) -->_w
-   return F T,(lzip_tape left (CONS T (APPEND bs cruft)))`,
+   inc_shift T,rzip_tape left (bs ++ F::cruft) -->_w
+   return F T,lzip_tape left (T::bs ++ cruft)`,
   SPEC_TAC(`T`,`s:bool`) THEN MATCH_MP_TAC REGLIKE_IND THEN CONJ_TAC THEN
   REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
   TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP' EVOLVE_TO_IMP)) THEN
   (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let incr_THM = prove(
-`inc_shift T,rzip_tape (CONS F left)
-   (APPEND (REGFILE (APPEND (CONS n ns) crs)) (CONS F cruft)) -->_w
- return F F,lzip_tape left
-   (CONS F (APPEND (REGFILE (APPEND (CONS (SUC n) ns) crs)) cruft))`,
+`inc_shift T,rzip_tape (F::left) (REGFILE ((n::ns) ++ crs) ++ F::cruft) -->_w
+ return F F,lzip_tape left (F::REGFILE ((SUC n::ns) ++ crs) ++ cruft)`,
   IMP_REWRITE_TAC[REGFILE_SUC; APPEND; NAMED_BEHAVIOR;
    GMATCH_MP' EVOLVE_TO_IMP ((CONV_RULE (REWRITE_CONV [IS_REGLIKE_T])
-   (SPECL[`(REGFILE (CONS n ns))`] incr_IND)))]);;
+   (SPECL[`(REGFILE (n::ns))`] incr_IND)))]);;
 
 let decr_IND = prove(
  `!x bs. REGLIKE x bs ==> !left.
-   dec_scan x,(rzip_tape (CONS x left) (APPEND bs (CONS F cruft))) -->_w
-   dec_shift x,(lzip_tape left (APPEND bs (CONS F (CONS F cruft))))`,
+   dec_scan x,rzip_tape (x::left) (bs ++ F::cruft) -->_w
+   dec_shift x,lzip_tape left (bs ++ F::F::cruft)`,
   MATCH_MP_TAC REGLIKE_IND THEN CONJ_TAC THEN
   REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
   TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP' EVOLVE_TO_IMP)) THEN
   (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let decr_THM_0 = prove(
- `dec_init,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND (CONS 0 ns) crs)) (CONS F cruft)) -->_w
-  return F F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND (CONS 0 ns) crs)) (CONS F cruft)))`,
+ `dec_init,rzip_tape (F::left) (REGFILE ((0::ns) ++ crs) ++ F::cruft) -->_w
+  return F F,lzip_tape left (F::REGFILE ((0::ns) ++ crs) ++ F::cruft)`,
   IMP_REWRITE_TAC[REGFILE_CLAUSES; REPLICATE; APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let decr_THM_SUC = prove(
- `dec_init,rzip_tape (CONS F left)
-    (APPEND (REGFILE (APPEND (CONS (SUC n) ns) crs)) (CONS F cruft)) -->_w
-  return T F,lzip_tape left
-    (CONS F (APPEND (REGFILE (APPEND (CONS n ns) crs)) (CONS F (CONS F cruft))))`,
+ `dec_init,rzip_tape (F::left) (REGFILE ((SUC n::ns) ++ crs) ++ F::cruft) -->_w
+  return T F,lzip_tape left (F::(REGFILE ((n::ns) ++ crs)) ++ F::F::cruft)`,
   IMP_REWRITE_TAC[REGFILE_CLAUSES; APPEND; REPLICATE; NAMED_BEHAVIOR_IMP;
    GMATCH_MP' EVOLVE_TO_IMP ((CONV_RULE (REWRITE_CONV [IS_REGLIKE_PARTIAL])
-   (SPECL[`T`;`APPEND (REPLICATE n T) (CONS F (REGFILE ns))`] decr_IND)))]);;
+   (SPECL[`T`;`REPLICATE n T ++ F::REGFILE ns`] decr_IND)))]);;
 
 let init_IND = prove(
  `!x bs. REGLIKE x bs ==> !left.
-   init_scan x,rzip_tape (CONS x left) (APPEND bs (CONS F cruft)) -->_w
-   return F x,lzip_tape left (CONS x (APPEND bs (CONS T cruft)))`,
+   init_scan x,rzip_tape (x::left) (bs ++ F :: cruft) -->_w
+   return F x,lzip_tape left (x::bs ++ T :: cruft)`,
   MATCH_MP_TAC REGLIKE_IND THEN CONJ_TAC THEN
   REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
   TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP' EVOLVE_TO_IMP)) THEN
   (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let init_THM = prove(
- `init_scan F,rzip_tape (CONS F left)
-    (APPEND (REGFILE (APPEND (CONS r rs) crs)) (CONS F cruft)) -->_w
-  return F F,lzip_tape left
-    (CONS F (APPEND (REGFILE (APPEND (CONS r rs) crs)) (CONS T cruft)))`,
-  MP_TAC (SPECL [`F`; `REGFILE (APPEND (CONS r rs) crs)`] init_IND) THEN
+ `init_scan F,rzip_tape (F::left) (REGFILE ((r::rs) ++ crs) ++ F::cruft) -->_w
+  return F F,lzip_tape left (F::REGFILE ((r::rs) ++ crs) ++ T::cruft)`,
+  MP_TAC (SPECL [`F`; `REGFILE ((r::rs) ++ crs)`] init_IND) THEN
   SIMP_TAC[IS_REGLIKE]);;
 
 let EVOLVES_TO_IMPS_TAC = RULE_ASSUM_TAC
   (fun a -> try GEN_ALL (GMATCH_MP' EVOLVE_TO_IMP a) with Failure _ -> a) ;;
 let regselect_THM = prove(
- `(!left. instate,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND rs crs)) (CONS F cruft)) -->_w
-     return skip F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND rs' crs)) cruft'))) ==>
-  (!l r. selstate,rzip_tape l (CONS F r) -->_w instate,rzip_tape (CONS F l) r) ==>
-  (!l r. selstate,rzip_tape l (CONS T r) -->_w selstate,rzip_tape (CONS T l) r) ==>
-  selstate,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND (CONS r rs) crs)) (CONS F cruft)) -->_w
-    return skip F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND (CONS r rs') crs)) cruft'))`,
+ `(!left. instate,rzip_tape (F::left) (REGFILE (rs ++ crs) ++ F :: cruft) -->_w
+     return skip F,lzip_tape left (F::REGFILE (rs' ++ crs) ++ cruft')) ==>
+  (!l r. selstate,rzip_tape l (F::r) -->_w instate,rzip_tape (F::l) r) ==>
+  (!l r. selstate,rzip_tape l (T::r) -->_w selstate,rzip_tape (T::l) r) ==>
+  selstate,rzip_tape (F::left) (REGFILE ((r::rs) ++ crs) ++ F::cruft) -->_w
+    return skip F,lzip_tape left (F::REGFILE ((r::rs') ++ crs) ++ cruft')`,
 
  REWRITE_TAC[REGFILE_CLAUSES; APPEND; REPLICATE; GSYM APPEND_ASSOC] THEN
  REPEAT STRIP_TAC THEN EVOLVES_TO_IMPS_TAC THEN (ASM IMP_REWRITE_TAC)[] THEN
- TRANS_TAC (GEN_ALL tm_evolves_TRANS)
-   `return skip T,lzip_tape (CONS F left) (CONS T
-     (APPEND (REPLICATE r T) (CONS F (APPEND (REGFILE (APPEND rs' crs)) cruft'))))` THEN
+ TRANS_TAC (GEN_ALL tm_evolves_TRANS) `return skip T,lzip_tape (F::left)
+     (T::REPLICATE r T ++ F::REGFILE (rs' ++ crs) ++ cruft')` THEN
  CONJ_TAC THENL [
-   SPEC_TAC (`CONS F left`,`left':bool list`) THEN SPEC_TAC(`r:num`,`r:num`) THEN INDUCT_TAC;
-   ALL_TAC] THEN
+   SPEC_TAC (`F::left`,`left':bool list`) THEN
+   SPEC_TAC(`r:num`,`r:num`) THEN INDUCT_TAC; ALL_TAC] THEN
 
  WITH_ASSUMS (BOOL_CASES_TAC `skip:bool`) THEN EVOLVES_TO_IMPS_TAC THEN
  (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let REGFILE_APPEND = prove(
-  `!rs1. REGFILE (APPEND rs1 rs2) = APPEND (REGFILE rs1) (REGFILE rs2)`,
+  `!rs1. REGFILE (rs1 ++ rs2) = REGFILE rs1 ++ REGFILE rs2`,
   LIST_INDUCT_TAC THEN
   ASM_REWRITE_TAC[REGFILE_CLAUSES; APPEND; GSYM APPEND_ASSOC]);;
 
 let regentry_THM = prove(
  `(!left crb crs.
-     instate,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND rs crs)) (CONS F crb)) -->_w
-     return skip F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND rs' crs)) (E crb)))) ==>
-  (!l r. sel1state,rzip_tape l (CONS F r) -->_w sel2state,rzip_tape (CONS F l) r) ==>
-  (!l r. sel2state,rzip_tape l (CONS F r) -->_w instate,rzip_tape (CONS F l) r) ==>
+     instate,rzip_tape (F::left) (REGFILE (rs ++ crs) ++ F::crb) -->_w
+     return skip F,lzip_tape left (F::REGFILE (rs' ++ crs) ++ E crb)) ==>
+  (!l r. sel1state,rzip_tape l (F::r) -->_w sel2state,rzip_tape (F::l) r) ==>
+  (!l r. sel2state,rzip_tape l (F::r) -->_w instate,rzip_tape (F::l) r) ==>
   ?cruft'. sel1state,rzip_tape left (OPSEG rs cruft) -->_w
   nextstate skip,lzip_tape left (OPSEG rs' cruft')`,
  DESTRUCT_TAC "@crs crb. cr" (SPEC_ALL CRUFT_EX_THM) THEN
  REWRITE_TAC[OPSEG] THEN
  REPEAT STRIP_TAC THEN REPLICATE_TAC 2 (ONCE_REWRITE_TAC [zip_extend']) THEN
  ASM_REWRITE_TAC[APPEND; GSYM APPEND_ASSOC] THEN
- EXISTS_TAC `APPEND (REGFILE crs) (E (crb:bool list))` THEN
+ EXISTS_TAC `REGFILE crs ++ E (crb:bool list)` THEN
  REWRITE_TAC[APPEND_ASSOC; GSYM REGFILE_APPEND] THEN
  EVOLVES_TO_IMPS_TAC THEN (ASM IMP_REWRITE_TAC)[] THEN
  BOOL_CASES_TAC `skip:bool` THEN REWRITE_TAC[NAMED_BEHAVIOR]);;
