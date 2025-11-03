@@ -5,6 +5,8 @@ let _ = unset_verbose_symbols();;
 
    still underusing directed conversions, implicational and target rewriting,
    custom tactics, simpsets, user parsers/printers
+
+   parsing: , ; brackets are special
    
    study drule/impconv more *)
 
@@ -19,22 +21,33 @@ let _ = unset_verbose_symbols();;
 (* top_sweep: exhaust then recurse *)
 (* definition sizes irrelevant, definitions list not used by core; too many (hundreds) of constants will slow down parsing *)
 
-(*
-let my_rev_conv =
-   let lem1 = SYM (REWRITE_CONV [APPEND_NIL] `APPEND (REVERSE (xs:A list)) []`) in
-   let lem2 = REWRITE_CONV [REVERSE;APPEND;GSYM APPEND_ASSOC] `APPEND (REVERSE (CONS (x:A) xs)) ys` in
-   let lem3 = REWRITE_CONV [REVERSE;APPEND] `APPEND (REVERSE []) (ys:A list)` in
-   fun rterm ->
-      let lsterm = rand rterm in
-      let Tyapp (_, ty::_) = type_of lsterm in
-      let [lem1i; lem2i; lem3i] = map (INST_TYPE [ty,aty]) [lem1; lem2; lem3] in
-      let [vxs; vx; vys] = frees (concl lem2i) in
-      let rec iter eq lhs rhs = match lhs with
-         | Const ("NIL",_) -> TRANS eq (INST [rhs,vys] lem3i)
-         | Comb (Comb (_,l) as cons_l,rest) -> iter (TRANS eq (INST [l,vx;rest,vxs;rhs,vys] lem2i)) rest (mk_comb(cons_l,rhs))
-      in iter (INST [lsterm,vxs] lem1i) lsterm (mk_const("NIL",[ty,aty])) ;;
-my_rev_conv `REVERSE [1;2;3;4;5;6]`;;
-*)
+(* known variants and proof consequences (2025-11-02)
+
+   andrew-j-wade/compiler-optimizations: 8097701
+     f2aee peephole two dispatchroots?, TODO
+     01815 combining semi-states, handled(nonuniqueness)
+     80977 initialization phase uses a BB machine, handled(cruft)
+   andrew-j-wade/master: 92375ea
+     cf386 alignment in transfer, handled(noop removal)
+     b371d no dedicated entry, handled(init-phase)
+     5d676 alignment changes, handled(noop removal)
+   andrew-j-wade/DET-typo-fix: 807332b
+     80733 cherry-picked
+   andrew-j-wade/patch-2: 8ce2367 (on CatsAreFluffy/master)
+     8ce23 rearranges cases for consistency, logic only, TODO
+   CatsAreFluffy/master: 74a0e04
+     printing changes
+     distingish size from alignment, handled(noop removal)
+     many loader things and handling scripts, irrelevant
+     temporary and expression changes, handled
+     added decz primitive, handled
+     various logic 
+     misc logic changes, handleable, TODO
+
+   ajwade/turing_machine_explorer/master: d3a9e07
+     technically unrelated, cannot audit, similar enough to consider the same
+     proof, needs further review
+   *)
 
 (* preliminaries - function and list handling *)
 
@@ -409,62 +422,39 @@ let NAMED_BEHAVIOR_IMP =
    REVERSE; current approach does two-sided recursion to avoid reverses *)
 
 let REG = define`REG n xs = APPEND (REPLICATE (SUC n) T) (CONS F xs)`;;
-let REGFILE = define`REGFILE ns xs = ITLIST REG ns xs`;;
-let REGFILE' = define `REGFILE' ns = ITLIST REG ns []`;;
-let OPSEG = define`OPSEG ns cruft = CONS F (CONS F (ITLIST REG ns cruft))`;;
-let OPSEG' = define`OPSEG' ns cruft = CONS F (CONS F (APPEND (REGFILE' ns) cruft))`;;
+let REGFILE = define `REGFILE ns = ITLIST REG ns []`;;
+let OPSEG = define`OPSEG ns cruft = CONS F (CONS F (APPEND (REGFILE ns) cruft))`;;
 let (REGLIKE, REGLIKE_IND, REGLIKE_CASES) = new_inductive_definition
- `REGLIKE F [F] /\
-  (!bs. REGLIKE F bs ==> REGLIKE T (CONS F bs)) /\
-  (!b bs. REGLIKE T bs ==> REGLIKE b (CONS T bs))`;;
-let (REGLIKE', REGLIKE_IND', REGLIKE_CASES') = new_inductive_definition
- `REGLIKE' F [] /\
-  (!bs. REGLIKE' F bs ==> REGLIKE' T (CONS F bs)) /\
-  (!b bs. REGLIKE' T bs ==> REGLIKE' b (CONS T bs))`;;
-let (REGLIKE'', REGLIKE_IND'', REGLIKE_CASES'') = new_inductive_definition
- `REGLIKE'' F [] /\
-  (!b v bs. REGLIKE' v bs /\ (b \/ v) ==> REGLIKE'' b (CONS v bs))`;;
-let (REGLIKE'3, REGLIKE_IND'3, REGLIKE_CASES'3) = new_inductive_definition
- `REGLIKE'3 F [] /\
-  (!x b bs. REGLIKE'3 b bs /\ (b \/ x) ==> REGLIKE'3 x (CONS b bs))`;;
-let REGLIKE'4 = define
- `REGLIKE'4 [] x = (x = F) /\
-  REGLIKE'4 (CONS b bs) x = (REGLIKE'4 bs b /\ (b \/ x))`;;
+ `REGLIKE F [] /\
+  (!x b bs. REGLIKE b bs /\ (b \/ x) ==> REGLIKE x (CONS b bs))`;;
 
 let REGFILE_CLAUSES = prove(
- `REGFILE' [] = [] /\ REGFILE' (CONS n ns) =
-    APPEND (REPLICATE (SUC n) T) (CONS F (REGFILE' ns))`,
-  REWRITE_TAC[REGFILE'; ITLIST; REG]);;
+ `REGFILE [] = [] /\ REGFILE (CONS n ns) =
+    APPEND (REPLICATE (SUC n) T) (CONS F (REGFILE ns))`,
+  REWRITE_TAC[REGFILE; ITLIST; REG]);;
 
 let IS_REGLIKE = prove(
- `!ns. REGLIKE'4 (REGFILE' ns) F`,
-  REWRITE_TAC[REGFILE'] THEN LIST_INDUCT_TAC THEN
-  REWRITE_TAC[ITLIST; REG; REPLICATE; APPEND; REGLIKE'4] THEN
-  SPEC_TAC(`h:num`,`h:num`) THEN INDUCT_TAC THEN
-  ASM_REWRITE_TAC[REPLICATE; APPEND; REGLIKE'4]);;
-
-let IS_REGLIKE'3 = prove(
- `!ns. REGLIKE'3 F (REGFILE' ns)`,
- REWRITE_TAC[REGFILE'] THEN LIST_INDUCT_TAC THEN
- IMP_REWRITE_TAC[ITLIST; REG; REPLICATE; APPEND; REGLIKE'3] THEN
+ `!ns. REGLIKE F (REGFILE ns)`,
+ REWRITE_TAC[REGFILE] THEN LIST_INDUCT_TAC THEN
+ IMP_REWRITE_TAC[ITLIST; REG; REPLICATE; APPEND; REGLIKE] THEN
  SPEC_TAC(`h:num`,`h:num`) THEN INDUCT_TAC THEN
- (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; REGLIKE'3]);;
+ (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; REGLIKE]);;
 
-let IS_REGLIKE'3_PARTIAL = prove(
- `!n. REGLIKE'3 T (APPEND (REPLICATE n T) (CONS F (REGFILE' ns)))`,
- INDUCT_TAC THEN IMP_REWRITE_TAC[REPLICATE; APPEND; REGLIKE'3; IS_REGLIKE'3]);;
+let IS_REGLIKE_PARTIAL = prove(
+ `!n. REGLIKE T (APPEND (REPLICATE n T) (CONS F (REGFILE ns)))`,
+ INDUCT_TAC THEN IMP_REWRITE_TAC[REPLICATE; APPEND; REGLIKE; IS_REGLIKE]);;
 
-let IS_REGLIKE'3_T = prove(
- `REGLIKE'3 T (REGFILE' (CONS n ns))`,
- IMP_REWRITE_TAC[REGFILE_CLAUSES; REPLICATE; APPEND; REGLIKE'3;
-   IS_REGLIKE'3_PARTIAL]);;
+let IS_REGLIKE_T = prove(
+ `REGLIKE T (REGFILE (CONS n ns))`,
+ IMP_REWRITE_TAC[REGFILE_CLAUSES; REPLICATE; APPEND; REGLIKE;
+   IS_REGLIKE_PARTIAL]);;
 
 let (WITH_ASSUMS:tactic->tactic) = fun tt (asl,w) ->
    (REPEAT (POP_ASSUM MP_TAC) THEN tt THEN
      REPLICATE_TAC (length asl) DISCH_TAC) (asl,w) ;;
 let CRUFT_EX_THM = prove(
  `!cruft. ?crs cbs. (APPEND cruft [F; F]) =
-    (APPEND (REGFILE' crs) (CONS F cbs))`,
+    (APPEND (REGFILE crs) (CONS F cbs))`,
   MATCH_MP_TAC list_2INDUCT THEN REPEAT STRIP_TAC THENL [
     EXISTS_TAC `[]:num list` THEN EXISTS_TAC `[F]`;
     BOOL_CASES_TAC `a0:bool` THENL [
@@ -485,82 +475,82 @@ let ALL_BOOL_CASES_TAC g = MAP_EVERY BOOL_CASES_TAC
   (filter (fun v -> type_of v = bool_ty) (frees (snd g))) g;;
 
 let REGFILE_SUC = prove(
- `REGFILE' (CONS (SUC n) ns) = CONS T (REGFILE' (CONS n ns))`,
-  REWRITE_TAC[REGFILE'; ITLIST; REG; REPLICATE; APPEND]);;
+ `REGFILE (CONS (SUC n) ns) = CONS T (REGFILE (CONS n ns))`,
+  REWRITE_TAC[REGFILE; ITLIST; REG; REPLICATE; APPEND]);;
 
 let incr_IND = prove(
- `!bs. REGLIKE'3 T bs ==> !left.
+ `!bs. REGLIKE T bs ==> !left.
    inc_shift T,(rzip_tape left (APPEND bs (CONS F cruft))) -->_w
    return F T,(lzip_tape left (CONS T (APPEND bs cruft)))`,
-  SPEC_TAC(`T`,`s:bool`) THEN MATCH_MP_TAC REGLIKE_IND'3 THEN CONJ_TAC THEN
+  SPEC_TAC(`T`,`s:bool`) THEN MATCH_MP_TAC REGLIKE_IND THEN CONJ_TAC THEN
   REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
   TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP' EVOLVE_TO_IMP)) THEN
   (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let incr_THM = prove(
 `inc_shift T,rzip_tape (CONS F left)
-   (APPEND (REGFILE' (APPEND (CONS n ns) crs)) (CONS F cruft)) -->_w
+   (APPEND (REGFILE (APPEND (CONS n ns) crs)) (CONS F cruft)) -->_w
  return F F,lzip_tape left
-   (CONS F (APPEND (REGFILE' (APPEND (CONS (SUC n) ns) crs)) cruft))`,
+   (CONS F (APPEND (REGFILE (APPEND (CONS (SUC n) ns) crs)) cruft))`,
   IMP_REWRITE_TAC[REGFILE_SUC; APPEND; NAMED_BEHAVIOR;
-   GMATCH_MP' EVOLVE_TO_IMP ((CONV_RULE (REWRITE_CONV [IS_REGLIKE'3_T])
-   (SPECL[`(REGFILE' (CONS n ns))`] incr_IND)))]);;
+   GMATCH_MP' EVOLVE_TO_IMP ((CONV_RULE (REWRITE_CONV [IS_REGLIKE_T])
+   (SPECL[`(REGFILE (CONS n ns))`] incr_IND)))]);;
 
 let decr_IND = prove(
- `!x bs. REGLIKE'3 x bs ==> !left.
+ `!x bs. REGLIKE x bs ==> !left.
    dec_scan x,(rzip_tape (CONS x left) (APPEND bs (CONS F cruft))) -->_w
    dec_shift x,(lzip_tape left (APPEND bs (CONS F (CONS F cruft))))`,
-  MATCH_MP_TAC REGLIKE_IND'3 THEN CONJ_TAC THEN
+  MATCH_MP_TAC REGLIKE_IND THEN CONJ_TAC THEN
   REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
   TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP' EVOLVE_TO_IMP)) THEN
   (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let decr_THM_0 = prove(
- `dec_init,rzip_tape (CONS F left) (APPEND (REGFILE' (APPEND (CONS 0 ns) crs)) (CONS F cruft)) -->_w
-  return F F,lzip_tape left (CONS F (APPEND (REGFILE' (APPEND (CONS 0 ns) crs)) (CONS F cruft)))`,
+ `dec_init,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND (CONS 0 ns) crs)) (CONS F cruft)) -->_w
+  return F F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND (CONS 0 ns) crs)) (CONS F cruft)))`,
   IMP_REWRITE_TAC[REGFILE_CLAUSES; REPLICATE; APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let decr_THM_SUC = prove(
  `dec_init,rzip_tape (CONS F left)
-    (APPEND (REGFILE' (APPEND (CONS (SUC n) ns) crs)) (CONS F cruft)) -->_w
+    (APPEND (REGFILE (APPEND (CONS (SUC n) ns) crs)) (CONS F cruft)) -->_w
   return T F,lzip_tape left
-    (CONS F (APPEND (REGFILE' (APPEND (CONS n ns) crs)) (CONS F (CONS F cruft))))`,
+    (CONS F (APPEND (REGFILE (APPEND (CONS n ns) crs)) (CONS F (CONS F cruft))))`,
   IMP_REWRITE_TAC[REGFILE_CLAUSES; APPEND; REPLICATE; NAMED_BEHAVIOR_IMP;
-   GMATCH_MP' EVOLVE_TO_IMP ((CONV_RULE (REWRITE_CONV [IS_REGLIKE'3_PARTIAL])
-   (SPECL[`T`;`APPEND (REPLICATE n T) (CONS F (REGFILE' ns))`] decr_IND)))]);;
+   GMATCH_MP' EVOLVE_TO_IMP ((CONV_RULE (REWRITE_CONV [IS_REGLIKE_PARTIAL])
+   (SPECL[`T`;`APPEND (REPLICATE n T) (CONS F (REGFILE ns))`] decr_IND)))]);;
 
 let init_IND = prove(
- `!x bs. REGLIKE'3 x bs ==> !left.
+ `!x bs. REGLIKE x bs ==> !left.
    init_scan x,rzip_tape (CONS x left) (APPEND bs (CONS F cruft)) -->_w
    return F x,lzip_tape left (CONS x (APPEND bs (CONS T cruft)))`,
-  MATCH_MP_TAC REGLIKE_IND'3 THEN CONJ_TAC THEN
+  MATCH_MP_TAC REGLIKE_IND THEN CONJ_TAC THEN
   REPEAT GEN_TAC THEN ALL_BOOL_CASES_TAC THEN REWRITE_TAC[] THEN
   TRY (DISCH_THEN (ASSUME_TAC o GMATCH_MP' EVOLVE_TO_IMP)) THEN
   (ASM IMP_REWRITE_TAC)[APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let init_THM = prove(
  `init_scan F,rzip_tape (CONS F left)
-    (APPEND (REGFILE' (APPEND (CONS r rs) crs)) (CONS F cruft)) -->_w
+    (APPEND (REGFILE (APPEND (CONS r rs) crs)) (CONS F cruft)) -->_w
   return F F,lzip_tape left
-    (CONS F (APPEND (REGFILE' (APPEND (CONS r rs) crs)) (CONS T cruft)))`,
-  MP_TAC (SPECL [`F`; `REGFILE' (APPEND (CONS r rs) crs)`] init_IND) THEN
-  SIMP_TAC[IS_REGLIKE'3]);;
+    (CONS F (APPEND (REGFILE (APPEND (CONS r rs) crs)) (CONS T cruft)))`,
+  MP_TAC (SPECL [`F`; `REGFILE (APPEND (CONS r rs) crs)`] init_IND) THEN
+  SIMP_TAC[IS_REGLIKE]);;
 
 let EVOLVES_TO_IMPS_TAC = RULE_ASSUM_TAC
   (fun a -> try GEN_ALL (GMATCH_MP' EVOLVE_TO_IMP a) with Failure _ -> a) ;;
 let regselect_THM = prove(
- `(!left. instate,rzip_tape (CONS F left) (APPEND (REGFILE' (APPEND rs crs)) (CONS F cruft)) -->_w
-     return skip F,lzip_tape left (CONS F (APPEND (REGFILE' (APPEND rs' crs)) cruft'))) ==>
+ `(!left. instate,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND rs crs)) (CONS F cruft)) -->_w
+     return skip F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND rs' crs)) cruft'))) ==>
   (!l r. selstate,rzip_tape l (CONS F r) -->_w instate,rzip_tape (CONS F l) r) ==>
   (!l r. selstate,rzip_tape l (CONS T r) -->_w selstate,rzip_tape (CONS T l) r) ==>
-  selstate,rzip_tape (CONS F left) (APPEND (REGFILE' (APPEND (CONS r rs) crs)) (CONS F cruft)) -->_w
-    return skip F,lzip_tape left (CONS F (APPEND (REGFILE' (APPEND (CONS r rs') crs)) cruft'))`,
+  selstate,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND (CONS r rs) crs)) (CONS F cruft)) -->_w
+    return skip F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND (CONS r rs') crs)) cruft'))`,
 
  REWRITE_TAC[REGFILE_CLAUSES; APPEND; REPLICATE; GSYM APPEND_ASSOC] THEN
  REPEAT STRIP_TAC THEN EVOLVES_TO_IMPS_TAC THEN (ASM IMP_REWRITE_TAC)[] THEN
  TRANS_TAC (GEN_ALL tm_evolves_TRANS)
    `return skip T,lzip_tape (CONS F left) (CONS T
-     (APPEND (REPLICATE r T) (CONS F (APPEND (REGFILE' (APPEND rs' crs)) cruft'))))` THEN
+     (APPEND (REPLICATE r T) (CONS F (APPEND (REGFILE (APPEND rs' crs)) cruft'))))` THEN
  CONJ_TAC THENL [
    SPEC_TAC (`CONS F left`,`left':bool list`) THEN SPEC_TAC(`r:num`,`r:num`) THEN INDUCT_TAC;
    ALL_TAC] THEN
@@ -569,23 +559,23 @@ let regselect_THM = prove(
  (ASM IMP_REWRITE_TAC)[REPLICATE; APPEND; NAMED_BEHAVIOR_IMP]);;
 
 let REGFILE_APPEND = prove(
-  `!rs1. REGFILE' (APPEND rs1 rs2) = APPEND (REGFILE' rs1) (REGFILE' rs2)`,
+  `!rs1. REGFILE (APPEND rs1 rs2) = APPEND (REGFILE rs1) (REGFILE rs2)`,
   LIST_INDUCT_TAC THEN
   ASM_REWRITE_TAC[REGFILE_CLAUSES; APPEND; GSYM APPEND_ASSOC]);;
 
 let regentry_THM = prove(
  `(!left crb crs.
-     instate,rzip_tape (CONS F left) (APPEND (REGFILE' (APPEND rs crs)) (CONS F crb)) -->_w
-     return skip F,lzip_tape left (CONS F (APPEND (REGFILE' (APPEND rs' crs)) (E crb)))) ==>
+     instate,rzip_tape (CONS F left) (APPEND (REGFILE (APPEND rs crs)) (CONS F crb)) -->_w
+     return skip F,lzip_tape left (CONS F (APPEND (REGFILE (APPEND rs' crs)) (E crb)))) ==>
   (!l r. sel1state,rzip_tape l (CONS F r) -->_w sel2state,rzip_tape (CONS F l) r) ==>
   (!l r. sel2state,rzip_tape l (CONS F r) -->_w instate,rzip_tape (CONS F l) r) ==>
-  ?cruft'. sel1state,rzip_tape left (OPSEG' rs cruft) -->_w
-  nextstate skip,lzip_tape left (OPSEG' rs' cruft')`,
+  ?cruft'. sel1state,rzip_tape left (OPSEG rs cruft) -->_w
+  nextstate skip,lzip_tape left (OPSEG rs' cruft')`,
  DESTRUCT_TAC "@crs crb. cr" (SPEC_ALL CRUFT_EX_THM) THEN
- REWRITE_TAC[OPSEG'] THEN
+ REWRITE_TAC[OPSEG] THEN
  REPEAT STRIP_TAC THEN REPLICATE_TAC 2 (ONCE_REWRITE_TAC [zip_extend']) THEN
  ASM_REWRITE_TAC[APPEND; GSYM APPEND_ASSOC] THEN
- EXISTS_TAC `APPEND (REGFILE' crs) (E (crb:bool list))` THEN
+ EXISTS_TAC `APPEND (REGFILE crs) (E (crb:bool list))` THEN
  REWRITE_TAC[APPEND_ASSOC; GSYM REGFILE_APPEND] THEN
  EVOLVES_TO_IMPS_TAC THEN (ASM IMP_REWRITE_TAC)[] THEN
  BOOL_CASES_TAC `skip:bool` THEN REWRITE_TAC[NAMED_BEHAVIOR]);;
