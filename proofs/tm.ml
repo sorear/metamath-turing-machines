@@ -312,9 +312,8 @@ let zip_extend = prove(
   CONV_TAC INT_REDUCE_CONV THEN SIMP_TAC[APPEND]);;
 
 let zip_extend' = prove(
-  `lzip_tape ls rs = lzip_tape ls (rs ++ [F]) /\
-   rzip_tape ls rs = rzip_tape ls (rs ++ [F])`,
-  SIMP_TAC[lzip_tape;rzip_tape;list_tape_RAPPEND;APPEND_ASSOC]);;
+  `rzip_tape ls rs = rzip_tape ls (rs ++ [F])`,
+  SIMP_TAC[rzip_tape;list_tape_RAPPEND;APPEND_ASSOC]);;
 
 let zip_read = prove(
   `lzip_tape (CONS l ls) rs (&0) = l /\ rzip_tape ls (CONS r rs) (&0) = r`,
@@ -978,12 +977,12 @@ let callee_of_line l = match l with
      dest_small_numeral (lhand (concl th)))
   | _ -> failwith "callee_of_line";;
 
-let all_callees_of_sub = memo_fix (fun r addr ->
-  insert addr (unions (mapfilter (r o callee_of_line) (LINES_OF_SUB addr))));;
+let all_callees_of_sub fn = memo_fix (fun r addr ->
+  insert addr (unions (mapfilter (r o callee_of_line) (fn addr))));;
 
-let complexity =
-  let subs = all_callees_of_sub (448,0) in
-  let lines = flat (map LINES_OF_SUB subs) in
+let complexity fn =
+  let subs = all_callees_of_sub fn (448,0) in
+  let lines = flat (map fn subs) in
   let thms = flat (map (function Lop ts -> ts | Lsub t -> [t]) lines) in
   (length subs, length lines, length thms) ;;
 
@@ -1044,6 +1043,35 @@ let INIT_REACHED =
   srch 0 zip_init ;;
 
 (* class abstraction *)
+
+parse_as_infix("-->_c",(12,"right"));;
+let TMEVC_DEF = define`c1 -->_c c2 <=>
+   !a. a IN c1 ==> ?b. b IN c2 /\ a -->_w b`;;
+let REGSTATE = define`RS pc regs = {DISPSTATE l pc (OPSEG regs c) | c,l | T}`;;
+
+let TMEVC_TRANS = prove(`c1 -->_c c2 /\ c2 -->_c c3 ==> c1 -->_c c3`,
+  MESON_TAC[TMEVC_DEF; tm_evolves_TRANS]);;
+let TMEVC_LIFT1 = prove(
+ `(!l c. DISPSTATE l pc (OPSEG rs c) -->_w
+   DISPSTATE l pc' (OPSEG rs' (J c))) ==> RS pc rs -->_c RS pc' rs'`,
+ REWRITE_TAC[REGSTATE; TMEVC_DEF; IN_ELIM_THM] THEN MESON_TAC[]);;
+let TMEVC_LIFT2 = prove(
+ `(!l rr. DISPSTATE l pc rr -->_w DISPSTATE l pc' rr) ==>
+  RS pc rs -->_c RS pc' rs`,
+ REWRITE_TAC[REGSTATE; TMEVC_DEF; IN_ELIM_THM] THEN MESON_TAC[]);;
+let TMEVC_LIFT3 = prove(
+ `(!l rr. DISPSTATE l pc rr -->_w halted) ==> RS pc rs -->_c {halted}`,
+ REWRITE_TAC[REGSTATE; TMEVC_DEF; IN_ELIM_THM; IN_SING] THEN MESON_TAC[]);;
+
+let LINES_OF_SUB_C =
+  let abs_tm t = if is_const (rand (concl t)) then
+    MATCH_MP TMEVC_LIFT3 (GENL [`left:bool list`;`right:bool list`] t) else
+    if is_var (rand (rand (concl t))) then
+      MATCH_MP TMEVC_LIFT2 (GENL [`left:bool list`;`right:bool list`] t) else
+      MATCH_MP TMEVC_LIFT1 (GENL [`left:bool list`;`cruft:bool list`] t) in
+  let abs_line l = match l with Lsub t -> Lsub t | Lop ts ->
+    Lop (map abs_tm ts) in
+memo_fix (fun _ addr -> map abs_line (LINES_OF_SUB addr));;
 
 (* cantor pairs *)
 
