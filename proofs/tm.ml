@@ -206,7 +206,7 @@ let toks_to_state_info [name;_;w0;m0;ns0;w1;m1;ns1] =
  (name,(state_of_name ns0,m0="R",w0="1"),(state_of_name ns1,m1="R",w1="1")) ;;
 let state_info = map toks_to_state_info tm_states_tok ;;
 
-let mk_bool b = if b then `T` else `F` ;;
+let mk_bool = let T = `T` and F = `F` in fun b -> if b then T else F ;;
 
 (* construct and prove validity of loaded transition table *)
 
@@ -759,6 +759,77 @@ let SPINE = memo_fix (fun SPINE' id ->
       len+1,false,MP (disch (SPECL [nid; mk_small_numeral ns0; mk_small_numeral len] SPINE_NC)) thmnc) ;;
 
  (* jumps, noops *)
+
+let write_ID = prove(`write (t (&0)) t = t`,
+ REWRITE_TAC [FUN_EQ_THM; tape_write_DEF] THEN MESON_TAC[]);;
+
+ (* 10-20x faster than BEHAVIOR *)
+let TT_CLAUSE =
+  let z = `0` in
+  let cv1 = CONV_RULE (GEN_REWRITE_CONV TOP_SWEEP_CONV [nmap_CLAUSES]) in
+  let cv2 = CONV_RULE (GEN_REWRITE_CONV TOP_SWEEP_CONV [bmap_CLAUSES]) in
+  fun id ->
+    let precl = cv1 (AP_THM transition_table_DEF (mk_small_numeral id)) in
+    fun b ->
+      let cl1 = cv2 (AP_THM precl (mk_bool b)) in
+      CONJ cl1 (NUM_EQ_CONV (mk_eq(lhand (rand (concl cl1)),z)));;
+let TT_CLAUSES id = let cls = TT_CLAUSE id in CONJ (cls false) (cls true);;
+
+let IGN_TURN_THM = prove(
+ `(transition_table st F = nst,d,F /\ (nst = 0) = F) /\
+  (transition_table st T = nst,d,T /\ (nst = 0) = F) ==>
+  st,t -->_w nst,shift (if d then (&1) else --(&1)) t`,
+ MATCH_MP_TAC (TAUT `(p/\q==>r==>s)==>(q/\r)/\(p/\r)==>s`) THEN
+ REWRITE_TAC [SYM FORALL_BOOL_THM] THEN
+ STRIP_TAC THEN STRIP_TAC THEN MATCH_MP_TAC tm_evolves_BASE THEN
+ ASM_REWRITE_TAC[gtm_step_DEF; LET_DEF; LET_END_DEF; write_ID]);;
+
+let TT_BEHAVE_L = prove(
+ `transition_table st b = nst,F,w /\ (nst = 0) = F ==>
+  (!l r. st,lzip_tape (b::l) r -->_w nst,lzip_tape l (w::r)) /\
+  (!l r. st,rzip_tape l (b::r) -->_w nst,lzip_tape l (w::r))`,
+ REPEAT STRIP_TAC THEN MATCH_MP_TAC tm_evolves_BASE THEN
+ ASM_REWRITE_TAC[gtm_step_DEF; LET_DEF; LET_END_DEF; zip_read; zip_write;
+ zip_shift]);;
+
+let TT_BEHAVE_R = prove(
+ `transition_table st b = nst,T,w /\ (nst = 0) = F ==>
+  (!l r. st,lzip_tape (b::l) r -->_w nst,rzip_tape (w::l) r) /\
+  (!l r. st,rzip_tape l (b::r) -->_w nst,rzip_tape (w::l) r)`,
+ REPEAT STRIP_TAC THEN MATCH_MP_TAC tm_evolves_BASE THEN
+ ASM_REWRITE_TAC[gtm_step_DEF; LET_DEF; LET_END_DEF; zip_read; zip_write;
+ zip_shift]);;
+
+let JUMP_BIT_THM = prove(
+ `transition_table st b = nst,F,b' /\ (nst = 0) = F ==>
+  (!right. LENGTH pc = n ==> nst,lzip_tape (pc ++ left) right -->_w
+    DISPSTATE left pc' right) ==>
+  !right. LENGTH (b::pc) = SUC n ==> st,lzip_tape ((b::pc) ++ left) right -->_w
+    DISPSTATE left (b'::pc') right`,
+  DISCH_THEN (MP_TAC o MATCH_MP TT_BEHAVE_L) THEN STRIP_TAC THEN
+  EVOLVES_TO_IMPS_TAC THEN ASM IMP_REWRITE_TAC[LENGTH; SUC_INJ; APPEND;
+    SYM DISPSTATE_CONS]);;
+
+let JUMP_TURN_THM = prove(
+ `(transition_table st F = nst,F,F /\ (nst = 0) = F) /\
+  (transition_table st T = nst,F,T /\ (nst = 0) = F) ==>
+  (!right. LENGTH pc = n ==> nst,lzip_tape (pc ++ left) right -->_w
+    DISPSTATE left pc' right) ==>
+  !right. LENGTH pc = n ==> st,rzip_tape (pc ++ left) right -->_w
+    DISPSTATE left pc' right`,
+  DISCH_THEN (MP_TAC o GEN_ALL o MATCH_MP IGN_TURN_THM) THEN STRIP_TAC THEN
+  EVOLVES_TO_IMPS_TAC THEN ASM IMP_REWRITE_TAC[zip_shift]);;
+
+let JUMP = memo_fix (fun JUMP (kvars,id) ->
+  let name,(ns0,m0,w0),(ns1,m1,w1) = el id state_info in
+  if String.starts_with ~prefix:"dispatch." name then
+    let _,_,thm = SPINE id in snd(SPEC_VAR thm)
+  else if w1 && not w0 && not m0 && not m1 && ns0 = ns1 then
+    MATCH_MP (MATCH_MP JUMP_TURN_THM (TT_CLAUSES id)) (JUMP (kvars,ns0))
+  else
+    match kvars with
+     kv::kvs -> MATCH_MP (MATCH_MP JUMP_BIT_THM (TT_CLAUSE id kv))
+       (JUMP (kvs,if kv then ns1 else ns0)));;
 
  (* internal nodes, root, operations, halting *)
 (*
