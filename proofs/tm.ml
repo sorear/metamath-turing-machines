@@ -45,8 +45,22 @@ let _ = unset_verbose_symbols();;
      misc logic changes, handleable, TODO
 
    ajwade/turing_machine_explorer/master: d3a9e07
-     technically unrelated, cannot audit, similar enough to consider the same
-     proof, needs further review
+     very different, proof seems to be adaptable
+     inc and regselect logic are the same, dec has the same recursive structure
+     but a different base case leading to different return values
+     dispatch tree is variable height but that was allowed for
+     single dispatch root, simpler in that way than advanced fixed-height TMs
+     control flow leading to dispatch root is completely different using break
+     and continue operators but fits naturally into the subroutine model
+
+     particular difficulty is the handling of the -1 register, in particular
+     the moving left edge of the register file and the fact that every register
+     operation is dispatched twice. we can probably make it work by
+     complicating the description of interface states
+
+     boot is more annoying than difficult, 2133492, 61009974 step eval process,
+     may need to leverage structure, most of boot1 is collatzy 2-cycles, boot2
+     is pseudo-dispatch
    *)
 
 (* preliminaries - function and list handling *)
