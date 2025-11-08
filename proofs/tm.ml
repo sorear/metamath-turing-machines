@@ -660,6 +660,8 @@ let (OPER_INCR_THMS, OPER_DECR_0_THMS, OPER_DECR_SUC_THMS) =
    definitions, the tricky part is parameterizing subroutines so that they can
    be handled in any context *)
 
+(* dispatch - spine *)
+
 let memo_fix fn =
   let tbl = Hashtbl.create 500 in
   let rec fn' v = match Hashtbl.find_opt tbl v with
@@ -673,10 +675,6 @@ let INC_PC = define
 
  (* machine dependent *)
 let DISPSTATE = define`DISPSTATE left pc right = 1,lzip_tape left (REVERSE pc ++ right)`;;
- (* machine dependent for short sfx *)
-let DISPATCH = define`DISPATCH st len sfx <=> LENGTH sfx = len /\ !left right pfx. DISPSTATE left (pfx ++ sfx) right -->_w st,rzip_tape (sfx ++ left) (REVERSE pfx ++ right)`;;
-
- (* spines *)
 
 let DISPSTATE_CONS = prove(
  `DISPSTATE left pc (b::right) = DISPSTATE left (b::pc) right`,
@@ -759,7 +757,7 @@ let SPINE = memo_fix (fun SPINE' id ->
     else
       len+1,false,MP (disch (SPECL [nid; mk_small_numeral ns0; mk_small_numeral len] SPINE_NC)) thmnc) ;;
 
- (* jumps, noops *)
+(* dispatch - jump and noop *)
 
 let write_ID = prove(`write (t (&0)) t = t`,
  REWRITE_TAC [FUN_EQ_THM; tape_write_DEF] THEN MESON_TAC[]);;
@@ -801,6 +799,13 @@ let TT_BEHAVE_R = prove(
  ASM_REWRITE_TAC[gtm_step_DEF; LET_DEF; LET_END_DEF; zip_read; zip_write;
  zip_shift]);;
 
+let TT_BEHAVE_H = prove(
+ `transition_table st b = 0,m,w /\ (0 = 0) = T ==>
+  (!l r. st,lzip_tape (b::l) r -->_w halted) /\
+  (!l r. st,rzip_tape l (b::r) -->_w halted)`,
+ REPEAT STRIP_TAC THEN MATCH_MP_TAC tm_evolves_BASE THEN
+ ASM_REWRITE_TAC[gtm_step_DEF; LET_DEF; LET_END_DEF; zip_read]);;
+
 let JUMP_BIT_THM = prove(
  `transition_table st b = nst,F,b' /\ (nst = 0) = F ==>
   (!right. LENGTH pc = n ==> nst,lzip_tape (pc ++ left) right -->_w
@@ -832,29 +837,153 @@ let JUMP = memo_fix (fun JUMP (kvars,id) ->
      kv::kvs -> MATCH_MP (MATCH_MP JUMP_BIT_THM (TT_CLAUSE id kv))
        (JUMP (kvs,if kv then ns1 else ns0)));;
 
- (* internal nodes, root, operations, halting *)
-(*
+(* dispatch - building the tree
 
-  (* true even for the weaker DISPATCH defs *)
-`transition_table st1 b = st2,T,b ==> DISPATCH sfx st1 ==> DISPATCH (b::sfx) st2`
+   the DISPATCH predicate depends on the existence of a dispatch-root state, so
+   in machine variants where it does not exist a weaker predicate must be used.
+   DISPATCH_WEAK is believed to survive *)
 
-`transition_table st1 b = 0,m,w ==> DISPATCH sfx st1 ==> DISPSTATE left (pfx ++ sfx) right -->_w halted`
-*)
+let DISPATCH = define`DISPATCH st len sfx <=> LENGTH sfx = len /\
+  !left right pfx. DISPSTATE left (pfx ++ sfx) right -->_w
+    st,rzip_tape (sfx ++ left) (REVERSE pfx ++ right)`;;
 
+ (* or perhaps dispatch.16 *)
+let main_state = state_of_name "main()[]";;
 
+let DISPATCH_LEN = prove(`DISPATCH st len sfx ==> LENGTH sfx = len`,
+  SIMP_TAC[DISPATCH]);;
+let DISPATCH_EV = prove(`DISPATCH st len sfx /\ 2 <= len ==>
+    DISPSTATE left (pfx ++ sfx) right -->_w
+      st,rzip_tape (sfx ++ left) (REVERSE pfx ++ right)`,
+  SIMP_TAC[DISPATCH]);;
 
- (* TODO memoize *)
-let rec guess_order id =
-  let name,(ns0,m0,w0),(ns1,m1,w1) = el id state_info in
-  if not (String.contains name '[') then 0 else
-  1 + max (guess_order ns0) (guess_order ns1) ;;
+let DISPATCH_BIT = prove(
+ `transition_table st b = nst,T,b /\ (nst = 0) = F ==>
+  DISPATCH st len sfx ==> DISPATCH nst (SUC len) (b::sfx)`,
+  DISCH_THEN (ASSUME_TAC o GEN_ALL o MATCH_MP TT_BEHAVE_R) THEN
+  SIMP_TAC[DISPATCH; LENGTH; APPEND] THEN REPEAT STRIP_TAC THEN
+  POP_ASSUM (MP_TAC o SPECL [`left:bool list`; `right:bool list`;
+    `pfx ++ [b:bool]`]) THEN
+  SIMP_TAC[GSYM APPEND_ASSOC; APPEND; REVERSE_APPEND; REVERSE] THEN
+  DISCH_THEN (MP_TAC o GEN_ALL o MATCH_MP EVOLVE_TO_IMP) THEN
+  IMP_REWRITE_TAC[] THEN ASM_SIMP_TAC[]);;
 
-(* .subs semantics
-   
-   combines the judgements from "dispatch basics" and "operations" and wraps it
-   all in existential quantifiers so that you don't need to study cruft
-   evolution *)
+let DISPATCH_HALT = prove(
+ `transition_table st b = 0,m,w /\ (0 = 0) = T ==>
+  DISPATCH st len sfx ==> DISPSTATE left (b::sfx) right -->_w halted`,
+  DISCH_THEN (ASSUME_TAC o GEN_ALL o MATCH_MP TT_BEHAVE_H) THEN
+  SIMP_TAC[DISPATCH] THEN REPEAT STRIP_TAC THEN
+  POP_ASSUM (MP_TAC o SPECL [`left:bool list`; `right:bool list`;
+    `[b:bool]`]) THEN
+  SIMP_TAC[GSYM APPEND_ASSOC; APPEND; REVERSE] THEN
+  DISCH_THEN (MP_TAC o GEN_ALL o MATCH_MP EVOLVE_TO_IMP) THEN
+  IMP_REWRITE_TAC[] THEN ASM_SIMP_TAC[]);;
 
+(* sub representation *)
+
+type line = Lop of thm list | Lsub of thm ;;
+
+let pc_bits, _, _ = SPINE (state_of_name "dispatch.0.carry");;
+
+let LINE_OF_OPER =
+  let lewit = EQT_ELIM (NUM_LE_CONV (mk_comb(`(<=) 2`,
+    mk_small_numeral pc_bits))) in
+  let disp0 = CONV_RULE (REWRITE_CONV [REVERSE; APPEND])
+    (INST [`[]:bool list`,`pfx:bool list`] DISPATCH_EV) in
+  let right = `right:bool list` and left = `left:bool list` in
+  let app = `(++):bool list->bool list->bool list` in
+  let subline asm basethm =
+    let pcterm = rand (concl asm) in
+    let lenth = MATCH_MP DISPATCH_LEN asm in
+    let _,_,thm3 = SPINE (dest_small_numeral (lhand (rand (concl basethm)))) in
+    let step1 = INST[rand (rand (lhand (concl basethm))),right]
+      (MATCH_MP disp0 (CONJ asm lewit)) in
+    let step2 = INST[mk_comb (mk_comb(app, pcterm),left),left] basethm in
+    let step3 = INST[rand (rand (rand (concl basethm))),right]
+      (CONV_RULE (PURE_REWRITE_CONV [INC_PC])
+        (SPEC_ALL (MATCH_MP thm3 lenth))) in
+    MATCH_MP tm_evolves_TRANS (CONJ step1
+      (MATCH_MP tm_evolves_TRANS (CONJ step2 step3))) in
+  let basethms = map (CONV_RULE (REWRITE_CONV [NAMED_STATES]))
+    (OPER_INIT_THM :: (OPER_INCR_THMS @ OPER_DECR_0_THMS @
+      OPER_DECR_SUC_THMS)) in
+  fun asm ->
+    let opst = rand (rator (rator (concl asm))) in
+    let len = dest_small_numeral (lhand (concl asm)) in
+    if len <> pc_bits then failwith "LINE_OF_OPER short" else
+    let bases = filter (fun t -> lhand (lhand (concl t)) = opst) basethms in
+    if bases = [] then failwith "LINE_OF_OPER nomatch" else
+    Lop (map (subline asm) bases) ;;
+
+let dest_bool b =
+  if b = mk_bool true then true else
+  if b = mk_bool false then false else
+  failwith "dest_bool" ;;
+
+ (* term_unify based substituter? *)
+
+ (* optimize? support left-edge jumps? *)
+let LINE_OF_JUMP asm =
+  let kbits,_ = splitlist dest_cons (rand (concl asm)) in
+  let pclen = dest_small_numeral (lhand (concl asm)) in
+  let extrapc = mk_list(replicate (mk_bool false) (pc_bits - pclen),bool_ty) in
+  let wit = EQT_ELIM (NUM_LE_CONV (mk_comb(`(<=) 2`,lhand(concl asm)))) in
+  let state = dest_small_numeral (lhand (rator (concl asm))) in
+  let dth = MATCH_MP DISPATCH_EV (CONJ asm wit) in
+  let jthr = CONV_RULE (PURE_REWRITE_CONV [ARITH_SUC])
+    (SPEC_ALL (JUMP (map dest_bool kbits,state))) in
+  let jth = INST [`REVERSE pfx ++ right:bool list`,`right:bool list`]
+     (MATCH_MP jthr (MATCH_MP DISPATCH_LEN asm)) in
+  let djth = INST [extrapc,`pfx:bool list`]
+    (MATCH_MP tm_evolves_TRANS (CONJ dth jth)) in
+  Lop [CONV_RULE (PURE_REWRITE_CONV [REVERSE; APPEND;
+    INC_PC; DISPSTATE_CONS]) djth] ;;
+
+let LINES_OF_EDGE nodefn asm bit =
+  let st = dest_small_numeral (lhand (rator (concl asm))) in
+  let cl = TT_CLAUSE st bit in
+  if dest_bool (rand (rand (concl cl))) then
+    [Lop [MATCH_MP (MATCH_MP DISPATCH_HALT cl) asm]]
+  else
+    nodefn (CONV_RULE (PURE_REWRITE_CONV [ARITH_SUC])
+      (MATCH_MP (MATCH_MP DISPATCH_BIT cl) asm)) ;;
+
+ (* reg_incr.2 strikes again *)
+let LINES_OF_NODE nodefn asm =
+  try [LINE_OF_OPER asm] with Failure _ ->
+  let st = dest_small_numeral (lhand (rator (concl asm))) in
+  let name = name_of_state st in
+  if String.ends_with ~suffix:"[]" name &&
+      hd (hyp asm) <> concl asm then
+    [Lsub asm]
+  else if String.contains name '[' || name = "reg_incr.2" then
+    LINES_OF_EDGE nodefn asm false @ LINES_OF_EDGE nodefn asm true
+  else
+    [LINE_OF_JUMP asm];;
+
+let LINES_OF_SUB =
+  let subtree = memo_fix LINES_OF_NODE in
+  fun (st,len) ->
+    subtree (ASSUME (list_mk_comb(`DISPATCH`,[mk_small_numeral(st);
+      mk_small_numeral(len); mk_var("pc",`:bool list`)])));;
+
+let callee_of_line l = match l with
+    Lsub th -> (dest_small_numeral (lhand (rator (concl th))),
+     dest_small_numeral (lhand (concl th)))
+  | _ -> failwith "callee_of_line";;
+
+let all_callees_of_sub = memo_fix (fun r addr ->
+  insert addr (unions (mapfilter (r o callee_of_line) (LINES_OF_SUB addr))));;
+
+let complexity =
+  let subs = all_callees_of_sub (448,0) in
+  let lines = flat (map LINES_OF_SUB subs) in
+  let thms = flat (map (function Lop ts -> ts | Lsub t -> [t]) lines) in
+  (length subs, length lines, length thms) ;;
+
+(* initialization *)
+
+(* class abstraction *)
 
 (* cantor pairs *)
 
