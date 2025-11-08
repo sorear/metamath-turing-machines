@@ -494,6 +494,8 @@ let CRUFT_EX_THM = prove(
 
   RULE_ASSUM_TAC SYM THEN
   REPEAT (POP_ASSUM MP_TAC) THEN SIMP_TAC[APPEND; REGFILE_CLAUSES; REPLICATE]);;
+let CRUFT_PARSE = new_specification ["JREGS"; "JBITS"]
+  (CONV_RULE (REWRITE_CONV [SKOLEM_THM]) CRUFT_EX_THM);;
 
 let ALL_BOOL_CASES_TAC g = MAP_EVERY BOOL_CASES_TAC
   (filter (fun v -> type_of v = bool_ty) (frees (snd g))) g;;
@@ -585,13 +587,12 @@ let regentry_THM = prove(
      return skip F,lzip_tape left (F::REGFILE (rs' ++ crs) ++ E crb)) ==>
   (!l r. sel1state,rzip_tape l (F::r) -->_w sel2state,rzip_tape (F::l) r) ==>
   (!l r. sel2state,rzip_tape l (F::r) -->_w instate,rzip_tape (F::l) r) ==>
-  ?cruft'. sel1state,rzip_tape left (OPSEG rs cruft) -->_w
-  nextstate skip,lzip_tape left (OPSEG rs' cruft')`,
- DESTRUCT_TAC "@crs crb. cr" (SPEC_ALL CRUFT_EX_THM) THEN
+  sel1state,rzip_tape left (OPSEG rs cruft) -->_w
+  nextstate skip,lzip_tape left (OPSEG rs'
+    (REGFILE (JREGS cruft) ++ E (JBITS cruft)))`,
  REWRITE_TAC[OPSEG] THEN
  REPEAT STRIP_TAC THEN REPLICATE_TAC 2 (ONCE_REWRITE_TAC [zip_extend']) THEN
- ASM_REWRITE_TAC[APPEND; GSYM APPEND_ASSOC] THEN
- EXISTS_TAC `REGFILE crs ++ E (crb:bool list)` THEN
+ ASM_REWRITE_TAC[APPEND; GSYM APPEND_ASSOC; CRUFT_PARSE] THEN
  REWRITE_TAC[APPEND_ASSOC; GSYM REGFILE_APPEND] THEN
  EVOLVES_TO_IMPS_TAC THEN (ASM IMP_REWRITE_TAC)[] THEN
  BOOL_CASES_TAC `skip:bool` THEN REWRITE_TAC[NAMED_BEHAVIOR]);;
