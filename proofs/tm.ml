@@ -782,3 +782,39 @@ let rec guess_order id =
    combines the judgements from "dispatch basics" and "operations" and wraps it
    all in existential quantifiers so that you don't need to study cruft
    evolution *)
+
+
+(* cantor pairs *)
+
+prioritize_num();;
+
+let CPAIR_INDUCT = prove(
+ `P 0 0 /\ (!x y. P x (SUC y) ==> P (SUC x) y) /\
+  (!x. P x 0 ==> P 0 (SUC x)) ==> !x y. P x y`,
+  REPEAT STRIP_TAC THEN WF_INDUCT_TAC `x + y` THEN POP_ASSUM MP_TAC THEN
+  SPEC_TAC(`y:num`,`y:num`) THEN SPEC_TAC(`x:num`,`x:num`) THEN
+  REPEAT INDUCT_TAC THEN
+  (ASM IMP_REWRITE_TAC[ARITH_RULE `SUC x + y = x + SUC y`]) THEN
+  ASM_SIMP_TAC[ADD_CLAUSES; LT]);;
+
+let CPAIR_DEF = define`cpair(x,y) = ((x + y) * ((x + y) + 1)) DIV 2 + x`;;
+let CPAIR_REC = prove(
+ `cpair(0,0) = 0 /\ cpair(SUC x,y) = SUC (cpair(x,SUC y)) /\
+  cpair(0,SUC y) = SUC (cpair(y,0))`, REWRITE_TAC[CPAIR_DEF] THEN ARITH_TAC);;
+
+let CUNPAIR_DEF = new_recursive_definition num_RECURSION
+  `cunpair 0 = 0,0 /\ cunpair (SUC p) =
+         (match cunpair p with x,0 -> 0,SUC x | x,SUC y -> SUC x,y)`;;
+let CUNPAIRPAIR = prove(`!x y. cunpair (cpair(x,y)) = x,y`,
+  MATCH_MP_TAC CPAIR_INDUCT THEN SIMP_TAC[CPAIR_REC; CUNPAIR_DEF]);;
+let CPAIRUNPAIR = prove(`!p. cpair (cunpair p) = p`,
+  INDUCT_TAC THEN SIMP_TAC[CPAIR_REC; CUNPAIR_DEF] THEN POP_ASSUM MP_TAC THEN
+  SPEC_TAC(`cunpair p`,`pp:num#num`) THEN MATCH_MP_TAC pair_INDUCT THEN
+  GEN_TAC THEN INDUCT_TAC THEN SIMP_TAC[CPAIR_REC]);;
+
+let CFST_DEF = define`cfst p = FST (cunpair p)`;;
+let CSND_DEF = define`csnd p = SND (cunpair p)`;;
+let CFST = prove(`cfst (cpair (x,y)) = x`, SIMP_TAC[CUNPAIRPAIR; CFST_DEF]);;
+let CSND = prove(`csnd (cpair (x,y)) = y`, SIMP_TAC[CUNPAIRPAIR; CSND_DEF]);;
+let CPAIR = prove(`cpair (cfst p,csnd p) = p`,
+  SIMP_TAC[CFST_DEF; CSND_DEF; PAIR; CPAIRUNPAIR]);;
