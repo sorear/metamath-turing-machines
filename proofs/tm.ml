@@ -186,6 +186,7 @@ let mk_bmap f t = mk_binop (mk_const("BMAP",[type_of f,aty])) f t ;;
 let gtm_valid_DEF = define`gtm_valid (tt:num->bool->num#bool#bool) st <=> ~(st = 0) /\ !b. FST(tt 0 b) = 0 /\ !i. i <= st ==> FST (tt i b) <= st` ;;
 let tape_shift_DEF = define`shift i (tp:int->bool) = \j. tp (i+j)`;;
 let tape_write_DEF = define`write v (tp:int->bool) = \i. if i = &0 then v else tp i`;;
+let initial_DEF = define`initial = 1,\(i:int).F`;;
 let halted_DEF = define`halted = 0,\(i:int).F`;;
 let gtm_step_DEF = define`gtm_step tt (st:num,t) = let ns,m,w = tt st (t (&0)) in if ns=0 then halted else ns,shift (if m then &1 else -- &1) (write w t)` ;;
 
@@ -311,8 +312,9 @@ let zip_extend = prove(
   CONV_TAC INT_REDUCE_CONV THEN SIMP_TAC[APPEND]);;
 
 let zip_extend' = prove(
-  `rzip_tape ls rs = rzip_tape ls (rs ++ [F])`,
-  SIMP_TAC[rzip_tape;list_tape_RAPPEND;APPEND_ASSOC]);;
+  `lzip_tape ls rs = lzip_tape ls (rs ++ [F]) /\
+   rzip_tape ls rs = rzip_tape ls (rs ++ [F])`,
+  SIMP_TAC[lzip_tape;rzip_tape;list_tape_RAPPEND;APPEND_ASSOC]);;
 
 let zip_read = prove(
   `lzip_tape (CONS l ls) rs (&0) = l /\ rzip_tape ls (CONS r rs) (&0) = r`,
@@ -322,6 +324,10 @@ let zip_read = prove(
   REWRITE_TAC[INT_OF_NUM_CLAUSES; NUM_OF_INT_OF_NUM; LE_0; ADD;
     LENGTH_REVERSE; EL_APPEND; LT_REFL; SUB_REFL; EL; HD; ADD_AC;
     ARITH_RULE `x < x + y + 1`]);;
+
+let zip_init = prove(`initial = 1,rzip_tape [] []`,
+  REWRITE_TAC[initial_DEF; PAIR_EQ; FUN_EQ_THM; rzip_tape; list_tape_DEF;
+   LENGTH; REVERSE; APPEND] THEN ARITH_TAC);;
 
 (* semantics
 
@@ -982,6 +988,60 @@ let complexity =
   (length subs, length lines, length thms) ;;
 
 (* initialization *)
+
+let comp_tm_step = memo_fix (fun _ (st,b,dir) ->
+  let cl = TT_CLAUSE st b in
+  let bf = if dest_bool (rand (rand (concl cl))) then
+    TT_BEHAVE_H else if dest_bool (lhand (rand (rand (lhand (concl cl))))) then
+      TT_BEHAVE_R else TT_BEHAVE_L in
+  let bfc = MATCH_MP bf cl in
+  let bp = SPEC_ALL (if dir then CONJUNCT2 bfc else CONJUNCT1 bfc) in
+  EQ_MP (AP_THM (AP_TERM `-->_w` (SYM (ASSUME
+    (mk_eq(`i:num#(int -> bool)`,lhand (concl bp)))))) (rand (concl bp))) bp,
+  MATCH_MP tm_evolves_TRANS
+    (CONJ (ASSUME (mk_comb(`(-->_w) i`,lhand (concl bp)))) bp));;
+
+let extend_tm_step dir =
+  let cr = CONV_RULE (REWRITE_CONV [zip_extend]) o ASSUME in
+  if dir then
+    cr (`i = st:num,rzip_tape l []`), cr (`i -->_w st,rzip_tape l []`)
+  else
+    cr (`i = st:num,lzip_tape [] r`), cr (`i -->_w st,lzip_tape [] r`);;
+
+let apply_tm_step (eq,tr) i thm =
+  let rule = if is_eq (concl thm) then eq else tr in
+  PROVE_HYP thm (INST i rule);;
+
+let COMP_TM_ITERATE =
+  let lv = `l:bool list` and rv = `r:bool list` in
+  let iv = `i:num#(int -> bool)` and stv = `st:num` in
+  fun thm ->
+    let sttm,btm,dir,ltm,rtm,ex = match rand (concl thm) with
+        Comb(Comb(_,sttm),Comb(Comb(Const("rzip_tape",_),ltm),
+          Comb(Comb(_,btm),rtm))) -> sttm,btm,true,ltm,rtm,false
+      | Comb(Comb(_,sttm),Comb(Comb(Const("lzip_tape",_),Comb(Comb(_,btm),
+          ltm)),rtm)) -> sttm,btm,false,ltm,rtm,false
+      | Comb(Comb(_,sttm),Comb(Comb(Const("rzip_tape",_),ltm),nil)) ->
+          sttm,mk_bool false,true,ltm,nil,true
+      | Comb(Comb(_,sttm),Comb(Comb(Const("lzip_tape",_),nil),rtm)) ->
+          sttm,mk_bool false,false,nil,rtm,true
+      | _ -> failwith "not a ground tape" in
+    let thm' = if ex then apply_tm_step (extend_tm_step dir)
+      [lhand (concl thm),iv;ltm,lv;rtm,rv;sttm,stv] thm else thm in
+    apply_tm_step (comp_tm_step (dest_small_numeral sttm,dest_bool btm,dir))
+      [lhand (concl thm),iv;ltm,lv;rtm,rv] thm' ;;
+
+ (* 1120 states at ~80 us/step *)
+let INIT_REACHED =
+  let state_eq = REWRITE_CONV [DISPSTATE; OPSEG; REGFILE_CLAUSES; REVERSE;
+    APPEND; REPLICATE; zip_extend]
+    `DISPSTATE [] [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
+      (OPSEG [0;0;0;0;0;0;0;0;0;0;0;0] [T;F;T;F;T;F;T])` in
+  let rec srch = fun i thm -> if rand (concl thm) = rand (concl state_eq) then
+    CONV_RULE (RAND_CONV (K (SYM state_eq))) thm else
+    if i > 10000 then failwith "too long" else
+    srch (i+1) (COMP_TM_ITERATE thm) in
+  srch 0 zip_init ;;
 
 (* class abstraction *)
 
