@@ -633,6 +633,10 @@ let (OPER_INCR_THMS, OPER_DECR_0_THMS, OPER_DECR_SUC_THMS) =
   wrapify decr_THM_0 (`reg_decr_last`::states `reg_decr` 0),
   wrapify decr_THM_SUC (`reg_decr_last`::states `reg_decr` 0);;
 
+(* load and parse .subs file *)
+
+
+
 (* dispatch basics
 
    dispatch and operations are two systems with clearly separated halves of the
@@ -654,6 +658,124 @@ let (OPER_INCR_THMS, OPER_DECR_0_THMS, OPER_DECR_SUC_THMS) =
    operation returns can reach the dispatch root. it is mostly just expanding
    definitions, the tricky part is parameterizing subroutines so that they can
    be handled in any context *)
+
+let memo_fix fn =
+  let tbl = Hashtbl.create 500 in
+  let rec fn' v = match Hashtbl.find_opt tbl v with
+    Some r -> r | None -> let r = fn fn' v in Hashtbl.add tbl v r; r in
+  fn' ;;
+
+let INC_PC = define
+  `INC_PC [] = [] /\
+   INC_PC (F::sfx) = T::sfx /\
+   INC_PC (T::sfx) = F::INC_PC sfx`;;
+
+ (* machine dependent *)
+let DISPSTATE = define`DISPSTATE left pc right = 1,lzip_tape left (REVERSE pc ++ right)`;;
+ (* machine dependent for short sfx *)
+let DISPATCH = define`DISPATCH st len sfx <=> LENGTH sfx = len /\ !left right pfx. DISPSTATE left (pfx ++ sfx) right -->_w st,rzip_tape (sfx ++ left) (REVERSE pfx ++ right)`;;
+
+ (* spines *)
+
+let DISPSTATE_CONS = prove(
+ `DISPSTATE left pc (b::right) = DISPSTATE left (b::pc) right`,
+ REWRITE_TAC[DISPSTATE; REVERSE; GSYM APPEND_ASSOC; APPEND]);;
+
+ (* todo: smarter STRUCT_CASES_TAC *)
+let SPINE_C = prove(
+ `!disp stnc stc n.
+  (!pc right. LENGTH pc = n ==> stnc,lzip_tape (pc ++ left) right -->_w DISPSTATE left pc right) ==>
+  (!pc right. LENGTH pc = n ==> stc,lzip_tape (pc ++ left) right -->_w DISPSTATE left (INC_PC pc) right) ==>
+  (!ls rs. disp,lzip_tape (F::ls) rs -->_w stnc,lzip_tape ls (T::rs)) ==>
+  (!ls rs. disp,lzip_tape (T::ls) rs -->_w stc,lzip_tape ls (F::rs)) ==>
+  (!pc right. LENGTH pc = SUC n ==> disp,lzip_tape (pc ++ left) right -->_w DISPSTATE left (INC_PC pc) right)`,
+  REPLICATE_TAC 9 STRIP_TAC THEN
+  STRUCT_CASES_TAC (ISPEC `pc:bool list` list_CASES) THEN
+  REWRITE_TAC[LENGTH; APPEND; NOT_SUC; SUC_INJ] THEN
+  BOOL_CASES_TAC `h:bool` THEN EVOLVES_TO_IMPS_TAC THEN
+  ASM IMP_REWRITE_TAC[INC_PC; SYM DISPSTATE_CONS]);;
+
+let SPINE_NC = prove(
+ `!disp stnc n.
+  (!pc right. LENGTH pc = n ==> stnc,lzip_tape (pc ++ left) right -->_w DISPSTATE left pc right) ==>
+  (!ls rs. disp,lzip_tape (F::ls) rs -->_w stnc,lzip_tape ls (F::rs)) ==>
+  (!ls rs. disp,lzip_tape (T::ls) rs -->_w stnc,lzip_tape ls (T::rs)) ==>
+  (!pc right. LENGTH pc = SUC n ==> disp,lzip_tape (pc ++ left) right -->_w DISPSTATE left pc right)`,
+  REPLICATE_TAC 8 STRIP_TAC THEN
+  STRUCT_CASES_TAC (ISPEC `pc:bool list` list_CASES) THEN
+  REWRITE_TAC[LENGTH; APPEND; NOT_SUC; SUC_INJ] THEN
+  BOOL_CASES_TAC `h:bool` THEN EVOLVES_TO_IMPS_TAC THEN
+  ASM IMP_REWRITE_TAC[SYM DISPSTATE_CONS]);;
+
+let SPINE_C2 = prove(
+ `!disp stc n.
+  (!pc right. LENGTH pc = n ==> stc,lzip_tape (pc ++ left) right -->_w DISPSTATE left (INC_PC pc) right) ==>
+  (!ls rs. disp,lzip_tape (F::ls) rs -->_w stc,lzip_tape ls (F::rs)) ==>
+  (!ls rs. disp,lzip_tape (T::ls) rs -->_w stc,lzip_tape ls (T::rs)) ==>
+  (!pc right. LENGTH pc = SUC n ==> disp,lzip_tape (pc ++ left) right -->_w DISPSTATE left (INC_PC (INC_PC pc)) right)`,
+  REPLICATE_TAC 8 STRIP_TAC THEN
+  STRUCT_CASES_TAC (ISPEC `pc:bool list` list_CASES) THEN
+  REWRITE_TAC[LENGTH; APPEND; NOT_SUC; SUC_INJ] THEN
+  BOOL_CASES_TAC `h:bool` THEN EVOLVES_TO_IMPS_TAC THEN
+  ASM IMP_REWRITE_TAC[INC_PC; SYM DISPSTATE_CONS]);;
+
+let SPINE_C0 = prove(
+ `!disp.
+  (!ls rs. disp,lzip_tape (F::ls) rs -->_w 1,lzip_tape ls (T::rs)) ==>
+  (!ls rs. disp,lzip_tape (T::ls) rs -->_w 1,lzip_tape ls (F::rs)) ==>
+  (!pc right. LENGTH pc = SUC 0 ==> disp,lzip_tape (pc ++ left) right -->_w DISPSTATE left (INC_PC pc) right)`,
+  REPLICATE_TAC 5 STRIP_TAC THEN
+  STRUCT_CASES_TAC (ISPEC `pc:bool list` list_CASES) THEN
+  SIMP_TAC[LENGTH; APPEND; NOT_SUC; SUC_INJ; LENGTH_EQ_NIL] THEN
+  BOOL_CASES_TAC `h:bool` THEN
+  ASM REWRITE_TAC[INC_PC; DISPSTATE; REVERSE; GSYM APPEND_ASSOC; APPEND]);;
+
+let SPINE_NC0 = prove(
+ `!disp.
+  (!ls rs. disp,lzip_tape (F::ls) rs -->_w 1,lzip_tape ls (F::rs)) ==>
+  (!ls rs. disp,lzip_tape (T::ls) rs -->_w 1,lzip_tape ls (T::rs)) ==>
+  (!pc right. LENGTH pc = SUC 0 ==> disp,lzip_tape (pc ++ left) right -->_w DISPSTATE left pc right)`,
+  REPLICATE_TAC 5 STRIP_TAC THEN
+  STRUCT_CASES_TAC (ISPEC `pc:bool list` list_CASES) THEN
+  SIMP_TAC[LENGTH; APPEND; NOT_SUC; SUC_INJ; LENGTH_EQ_NIL] THEN
+  BOOL_CASES_TAC `h:bool` THEN
+  ASM REWRITE_TAC[DISPSTATE; REVERSE; GSYM APPEND_ASSOC; APPEND]);;
+
+let SPINE = memo_fix (fun SPINE' id ->
+  let nid = mk_small_numeral id in
+  let disch = CONV_RULE (REWRITE_CONV [ARITH_SUC; BEHAVIOR nid `F`; BEHAVIOR nid `T`]) in
+  let name,(ns0,m0,w0),(ns1,m1,w1) = el id state_info in
+  if w0 = true then
+    if ns0 = 1 then 1,true,disch (SPEC nid SPINE_C0) else
+    let len,_,thmnc = SPINE' ns0 in
+    let _,_,thmc = SPINE' ns1 in
+    len+1,true,MP (MP (disch (SPECL [nid; mk_small_numeral ns0; mk_small_numeral ns1; mk_small_numeral len] SPINE_C)) thmnc) thmc
+  else
+    if ns0 = 1 then 1,false,disch (SPEC nid SPINE_NC0) else
+    let len,c,thmnc = SPINE' ns0 in
+    if c then
+      len+1,false,MP (disch (SPECL [nid; mk_small_numeral ns0; mk_small_numeral len] SPINE_C2)) thmnc
+    else
+      len+1,false,MP (disch (SPECL [nid; mk_small_numeral ns0; mk_small_numeral len] SPINE_NC)) thmnc) ;;
+
+ (* jumps, noops *)
+
+ (* internal nodes, root, operations, halting *)
+(*
+
+  (* true even for the weaker DISPATCH defs *)
+`transition_table st1 b = st2,T,b ==> DISPATCH sfx st1 ==> DISPATCH (b::sfx) st2`
+
+`transition_table st1 b = 0,m,w ==> DISPATCH sfx st1 ==> DISPSTATE left (pfx ++ sfx) right -->_w halted`
+*)
+
+
+
+ (* TODO memoize *)
+let rec guess_order id =
+  let name,(ns0,m0,w0),(ns1,m1,w1) = el id state_info in
+  if not (String.contains name '[') then 0 else
+  1 + max (guess_order ns0) (guess_order ns1) ;;
 
 (* .subs semantics
    
