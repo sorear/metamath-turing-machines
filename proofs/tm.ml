@@ -1165,7 +1165,9 @@ let curried_tmevc = MATCH_MP (TAUT `(p/\q==>r)==>q==>p==>r`) TMEVC_TRANS;;
 let simplifycf lines =
   let lassoc = map (fun l -> addr_of_line l,l) lines in
   let pcl = pcl_of_sub lines in
-  let first_addr = pad_pc (pc_bits - pcl) `pc:bool list` in
+  let first_addr = if pcl = 0 then (*hack*)
+    funpow 16 inc_pc (pad_pc (pc_bits - pcl) `pc:bool list`) else
+    pad_pc (pc_bits - pcl) `pc:bool list` in
   let last_addr = pad_pc (pc_bits - pcl) `INC_PC pc` in
   let rec chain t1 t2 = (*minor hack*)
     let t1r = rand (rand (concl t1)) and t2l = rand (lhand (concl t2)) in
