@@ -1120,3 +1120,63 @@ let CFST = prove(`cfst (cpair (x,y)) = x`, SIMP_TAC[CUNPAIRPAIR; CFST_DEF]);;
 let CSND = prove(`csnd (cpair (x,y)) = y`, SIMP_TAC[CUNPAIRPAIR; CSND_DEF]);;
 let CPAIR = prove(`cpair (cfst p,csnd p) = p`,
   SIMP_TAC[CFST_DEF; CSND_DEF; PAIR; CPAIRUNPAIR]);;
+
+(* simplification
+
+   simplifycf simplifies control flow by combining adjacent edges: operations
+   which do not perform case analysis (jumps, increments, noops, initialization
+   steps, more after inlining) are combined with their predecessors, and
+   unreachable lines are removed. this also performs a consistency check that
+   we have a line for all reachable pc values
+
+   decrloop recognizes simple decrement loops and translates them into zeroing,
+   addition, etc as simple operations *)
+
+let c_halted_tm = `{halted}`;;
+let rec pad_pc nbits tm = if nbits = 0 then tm else
+  mk_cons (mk_bool false) (pad_pc (nbits-1) tm);;
+let rec inc_pc tm =
+  if is_cons tm then
+    let btm,bstm = dest_cons tm in
+    if dest_bool btm then mk_cons (mk_bool false) (inc_pc bstm) else
+    mk_cons (mk_bool true) bstm
+  else
+    mk_comb(`INC_PC`,tm);;
+
+let addr_of_line = function
+    Lsub t -> pad_pc (pc_bits - dest_small_numeral (lhand (concl t)))
+      (rand (concl t))
+  | Lop (t::_) -> lhand (lhand (concl t))
+  | _ -> failwith "addr_of_line";;
+
+let addrs_after_line = function
+    Lsub t -> [pad_pc (pc_bits - dest_small_numeral (lhand (concl t)))
+      (inc_pc (rand (concl t)))]
+  | Lop tt -> map lhand (filter (fun t -> t <> c_halted_tm)
+      (map (rand o concl) tt));;
+
+let thms_of_line = function Lsub t -> [t] | Lop tt -> tt;;
+let pcl_of_sub = dest_small_numeral o lhand o
+  hd o hyp o hd o thms_of_line o hd;;
+
+let curried_tmevc = MATCH_MP (TAUT `(p/\q==>r)==>q==>p==>r`) TMEVC_TRANS;;
+
+let simplifycf lines =
+  let lassoc = map (fun l -> addr_of_line l,l) lines in
+  let pcl = pcl_of_sub lines in
+  let first_addr = pad_pc (pc_bits - pcl) `pc:bool list` in
+  let last_addr = pad_pc (pc_bits - pcl) `INC_PC pc` in
+  let rec simpcl t = if rand (concl t) = c_halted_tm then t else
+    let nexta = lhand (rand (concl t)) in
+    match List.assoc_opt nexta lassoc with
+      Some (Lop [tn]) -> simpcl (MATCH_MP (MATCH_MP curried_tmevc tn) t)
+    | _ -> t in
+  let simpline = function Lsub t -> Lsub t | Lop tt -> Lop (map simpcl tt) in
+  let rec visit lblack agrey = match agrey with [] -> lblack | ag::ags ->
+    if List.mem_assoc ag lblack || ag = last_addr then lblack else
+    let gl' = simpline (assoc ag lassoc) in
+    visit ((ag,gl')::lblack) (addrs_after_line gl' @ agrey) in
+  rev (map snd (visit [] [first_addr])) ;;
+
+let LINES_OF_SUB_S =
+  memo_fix (fun r addr -> simplifycf (LINES_OF_SUB_C addr));;
