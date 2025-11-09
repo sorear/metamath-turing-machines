@@ -1162,6 +1162,7 @@ let pcl_of_sub = dest_small_numeral o lhand o
 
 let curried_tmevc = MATCH_MP (TAUT `(p/\q==>r)==>q==>p==>r`) TMEVC_TRANS;;
 
+let ADD00 = ARITH_RULE `0 + x = x /\ x + 0 = x`;;
 let simplifycf lines =
   let lassoc = map (fun l -> addr_of_line l,l) lines in
   let pcl = pcl_of_sub lines in
@@ -1172,7 +1173,8 @@ let simplifycf lines =
   let rec chain t1 t2 = (*minor hack*)
     let t1r = rand (rand (concl t1)) and t2l = rand (lhand (concl t2)) in
     if is_var t1r && not (is_var t2l) then chain (INST [t2l,t1r] t1) t2 else
-    MATCH_MP (MATCH_MP curried_tmevc t2) t1 in
+    CONV_RULE (REWRITE_CONV [ADD00; ARITH_SUC])
+      (MATCH_MP (MATCH_MP curried_tmevc t2) t1) in
   let rec simpcl t = if rand (concl t) = c_halted_tm then t else
     let nexta = lhand (rand (concl t)) in
     match List.assoc_opt nexta lassoc with
@@ -1262,9 +1264,9 @@ let EVOLVESC_TO_IMPS_TAC = RULE_ASSUM_TAC
 
 let pair_sub_THM = prove(
  `(!y x z. RS A (J x y z) -->_c RS B (J 0 (x + y) (x + z))) ==>
-  (!x y. RS B (J x y 0) -->_c RS C (J x 0 (y + 0))) ==>
+  (!x y. RS B (J x y 0) -->_c RS C (J x 0 y)) ==>
   (!y z x. RS B (J x y (SUC z)) -->_c
-    RS B (J 0 ((z + x) + SUC y) ((z + x) + 0))) ==>
+    RS B (J 0 ((z + x) + SUC y) (z + x))) ==>
   RS A (J x y z) -->_c RS C (J 0 0 (cpair(x,z)+y))`,
 
   REWRITE_TAC[ADD_CLAUSES; CPAIR_DEF] THEN INTRO_TAC "a; b0; bs" THEN
