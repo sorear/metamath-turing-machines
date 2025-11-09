@@ -991,7 +991,7 @@ let callee_of_line l = match l with
   | _ -> failwith "callee_of_line";;
 
 let all_callees_of_sub fn = memo_fix (fun r addr ->
-  insert addr (unions (mapfilter (r o callee_of_line) (fn addr))));;
+  insert addr (unions (map r (mapfilter callee_of_line (fn addr)))));;
 
 let complexity fn =
   let subs = all_callees_of_sub fn (main_state,0) in
@@ -1166,17 +1166,59 @@ let simplifycf lines =
   let pcl = pcl_of_sub lines in
   let first_addr = pad_pc (pc_bits - pcl) `pc:bool list` in
   let last_addr = pad_pc (pc_bits - pcl) `INC_PC pc` in
+  let rec chain t1 t2 = (*minor hack*)
+    let t1r = rand (rand (concl t1)) and t2l = rand (lhand (concl t2)) in
+    if is_var t1r && not (is_var t2l) then chain (INST [t2l,t1r] t1) t2 else
+    MATCH_MP (MATCH_MP curried_tmevc t2) t1 in
   let rec simpcl t = if rand (concl t) = c_halted_tm then t else
     let nexta = lhand (rand (concl t)) in
     match List.assoc_opt nexta lassoc with
-      Some (Lop [tn]) -> simpcl (MATCH_MP (MATCH_MP curried_tmevc tn) t)
-    | _ -> t in
+      Some (Lop [tn]) -> simpcl (chain t tn) | _ -> t in
   let simpline = function Lsub t -> Lsub t | Lop tt -> Lop (map simpcl tt) in
   let rec visit lblack agrey = match agrey with [] -> lblack | ag::ags ->
-    if List.mem_assoc ag lblack || ag = last_addr then lblack else
+    if List.mem_assoc ag lblack || ag = last_addr then visit lblack ags else
     let gl' = simpline (assoc ag lassoc) in
-    visit ((ag,gl')::lblack) (addrs_after_line gl' @ agrey) in
+    visit ((ag,gl')::lblack) (addrs_after_line gl' @ ags) in
   rev (map snd (visit [] [first_addr])) ;;
+
+let EVOLVEC_TO_IMP = MATCH_MP (TAUT `(p/\q==>r)==>p==>q==>r=T`) TMEVC_TRANS;;
+
+let TMEVC_INDUCT = prove(
+ `!D E. (!j. D 0 j -->_c E j) /\ (!i j. D (SUC i) j -->_c D i (SUC j)) ==>
+  !i. D i 0 -->_c E (i + 0)`,
+  REPLICATE_TAC 4 STRIP_TAC THEN SPEC_TAC(`0`,`j:num`) THEN
+  SPEC_TAC(`i:num`,`i:num`) THEN
+  POP_ASSUM (ASSUME_TAC o GEN_ALL o MATCH_MP EVOLVEC_TO_IMP o SPEC_ALL) THEN
+  INDUCT_TAC THEN ASM IMP_REWRITE_TAC[ADD] THEN
+  ASM_SIMP_TAC[ARITH_RULE `SUC (i+j) = i + SUC j`]);;
+
+let decrloop thm0 thmsuc =
+  let rec find_indvar ll = let l,ll' = dest_cons ll in
+    if is_comb l && rator l = `SUC` then rand l else find_indvar ll' in
+  let indvar = find_indvar (rand (lhand (concl thmsuc))) in
+  let tmpvar = `i:num` in
+  let suc_map = zip (dest_list (rand (lhand (concl thmsuc))))
+    (dest_list (rand (rand (concl thmsuc)))) in
+  let suc_map' = filter (fun p -> is_var (fst p) && snd p <> fst p) suc_map in
+  let substsm (r,rupd) =
+    if rupd = mk_comb(`SUC`,r) then mk_binop `(+)` indvar r,r else
+    failwith "decrloop unknown rule" in
+  let sublist = map substsm suc_map' in
+  let d = mk_abs(tmpvar,mk_abs(indvar,subst ((tmpvar,`0`)::sublist)
+    (lhand (concl thm0)))) in
+  let e = mk_abs(indvar,subst sublist (rand (concl thm0))) in
+  CONV_RULE (REWRITE_CONV[ADD_CLAUSES]) (SPEC indvar
+    (CONV_RULE (REWRITE_CONV [thm0; thmsuc; ADD])
+      (SPECL [d;e] TMEVC_INDUCT)));;
+
+let decrloop_sub ls =
+  let decrloop_line l = match l with
+      Lop [t0;ts] when lhand (lhand (concl ts)) = lhand (rand (concl ts)) ->
+        Lop [decrloop t0 ts]
+    | _ -> l in
+  map decrloop_line ls;;
 
 let LINES_OF_SUB_S =
   memo_fix (fun r addr -> simplifycf (LINES_OF_SUB_C addr));;
+let LINES_OF_SUB_SD =
+  memo_fix (fun r addr -> decrloop_sub (simplifycf (LINES_OF_SUB_C addr)));;
