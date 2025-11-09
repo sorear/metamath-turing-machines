@@ -862,6 +862,12 @@ let DISPATCH_EV = prove(`DISPATCH st len sfx /\ 2 <= len ==>
       st,rzip_tape (sfx ++ left) (REVERSE pfx ++ right)`,
   SIMP_TAC[DISPATCH]);;
 
+let DISPATCH_ROOT = prove(`DISPATCH 448 0 []`, (*hack*)
+  SIMP_TAC[DISPATCH; LENGTH; APPEND; APPEND_NIL; DISPSTATE] THEN
+  REPEAT GEN_TAC THEN ACCEPT_TAC (CONV_RULE (REWRITE_CONV [zip_shift])
+    (INST[`lzip_tape left (REVERSE pfx ++ right)`,`t:int -> bool`]
+      (MATCH_MP IGN_TURN_THM (TT_CLAUSES 1)))));;
+
 let DISPATCH_BIT = prove(
  `transition_table st b = nst,T,b /\ (nst = 0) = F ==>
   DISPATCH st len sfx ==> DISPATCH nst (SUC len) (b::sfx)`,
@@ -884,11 +890,14 @@ let DISPATCH_HALT = prove(
   DISCH_THEN (MP_TAC o GEN_ALL o MATCH_MP EVOLVE_TO_IMP) THEN
   IMP_REWRITE_TAC[] THEN ASM_SIMP_TAC[]);;
 
+let WRAPAROUND = prove(`DISPATCH st 0 sfx ==> INC_PC sfx = sfx`,
+  SIMP_TAC[DISPATCH; LENGTH_EQ_NIL; INC_PC]);;
+
 (* sub representation *)
 
 type line = Lop of thm list | Lsub of thm ;;
 
-let pc_bits, _, _ = SPINE (state_of_name "dispatch.0.carry");;
+let pc_bits, _, _ = SPINE (state_of_name "dispatch.0.carry");; (*hack*)
 
 let LINE_OF_OPER =
   let lewit = EQT_ELIM (NUM_LE_CONV (mk_comb(`(<=) 2`,
@@ -925,8 +934,6 @@ let dest_bool b =
   if b = mk_bool false then false else
   failwith "dest_bool" ;;
 
- (* term_unify based substituter? *)
-
  (* optimize? support left-edge jumps? *)
 let LINE_OF_JUMP asm =
   let kbits,_ = splitlist dest_cons (rand (concl asm)) in
@@ -953,7 +960,6 @@ let LINES_OF_EDGE nodefn asm bit =
     nodefn (CONV_RULE (PURE_REWRITE_CONV [ARITH_SUC])
       (MATCH_MP (MATCH_MP DISPATCH_BIT cl) asm)) ;;
 
- (* reg_incr.2 strikes again *)
 let LINES_OF_NODE nodefn asm =
   try [LINE_OF_OPER asm] with Failure _ ->
   let st = dest_small_numeral (lhand (rator (concl asm))) in
@@ -961,16 +967,23 @@ let LINES_OF_NODE nodefn asm =
   if String.ends_with ~suffix:"[]" name &&
       hd (hyp asm) <> concl asm then
     [Lsub asm]
-  else if String.contains name '[' || name = "reg_incr.2" then
+  else if String.contains name '[' || name = "reg_incr.2" then (*hack*)
     LINES_OF_EDGE nodefn asm false @ LINES_OF_EDGE nodefn asm true
   else
     [LINE_OF_JUMP asm];;
 
+let apply_wraparound asm =
+  let wr = MATCH_MP WRAPAROUND asm in
+  let apply = CONV_RULE (PURE_REWRITE_CONV [wr]) in
+  function Lsub _ as l -> l | Lop tt -> Lop (map apply tt);;
+
 let LINES_OF_SUB =
   let subtree = memo_fix LINES_OF_NODE in
   fun (st,len) ->
-    subtree (ASSUME (list_mk_comb(`DISPATCH`,[mk_small_numeral(st);
-      mk_small_numeral(len); mk_var("pc",`:bool list`)])));;
+    let asm = ASSUME (list_mk_comb(`DISPATCH`,[mk_small_numeral(st);
+      mk_small_numeral(len); mk_var("pc",`:bool list`)])) in
+    let ll = subtree asm in
+    if len = 0 then map (apply_wraparound asm) ll else ll;;
 
 let callee_of_line l = match l with
     Lsub th -> (dest_small_numeral (lhand (rator (concl th))),
@@ -981,7 +994,7 @@ let all_callees_of_sub fn = memo_fix (fun r addr ->
   insert addr (unions (mapfilter (r o callee_of_line) (fn addr))));;
 
 let complexity fn =
-  let subs = all_callees_of_sub fn (448,0) in
+  let subs = all_callees_of_sub fn (main_state,0) in
   let lines = flat (map fn subs) in
   let thms = flat (map (function Lop ts -> ts | Lsub t -> [t]) lines) in
   (length subs, length lines, length thms) ;;
@@ -1035,7 +1048,7 @@ let INIT_REACHED =
   let state_eq = REWRITE_CONV [DISPSTATE; OPSEG; REGFILE_CLAUSES; REVERSE;
     APPEND; REPLICATE; zip_extend]
     `DISPSTATE [] [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
-      (OPSEG [0;0;0;0;0;0;0;0;0;0;0;0] [T;F;T;F;T;F;T])` in
+      (OPSEG [0;0;0;0;0;0;0;0;0;0;0;0] [T;F;T;F;T;F;T])` in (*hack*)
   let rec srch = fun i thm -> if rand (concl thm) = rand (concl state_eq) then
     CONV_RULE (RAND_CONV (K (SYM state_eq))) thm else
     if i > 10000 then failwith "too long" else
