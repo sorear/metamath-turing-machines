@@ -1156,6 +1156,7 @@ let addrs_after_line = function
       (map (rand o concl) tt));;
 
 let thms_of_line = function Lsub t -> [t] | Lop tt -> tt;;
+let thms_of_sub = flat o map thms_of_line;;
 let pcl_of_sub = dest_small_numeral o lhand o
   hd o hyp o hd o thms_of_line o hd;;
 
@@ -1227,6 +1228,83 @@ let inline_sub r ls =
     | _ -> l in
   map inline_line ls;;
 
+let unshuffle_vars thmlist =
+  let regfiles = map dest_list (flat (map (fun t ->
+    [rand (lhand (concl t)); rand (rand (concl t))]) thmlist)) in
+  let xpos = itlist (fun t xp -> map (fun (x,y) -> x::y) (zip t xp)) regfiles
+    (replicate [] num_regs) in
+  let regs = map (fun i -> mk_var("r"^(string_of_int i),`:num`))
+    (0 -- (num_regs-1)) in
+  let blank = replicate `v:num` num_regs in
+  let reg_to_skel = zip blank regs in
+  let skels = zip (map (map (vsubst reg_to_skel)) xpos) regs in
+  let blank_skel = replicate `v:num` (length regfiles) in
+  let oregs = map snd (sort (<) (filter (fun (sk,r) ->
+    sk <> blank_skel) skels)) in
+
+  let indices = map (fun r -> index r regs) oregs in
+  let ren = map (fun i -> mk_var("v"^(string_of_int i),`:num`))
+    (1 -- length oregs) in
+  let ren_map = zip ren oregs in
+  let abs = list_mk_abs (ren, vsubst ren_map (mk_flist regs)) in
+  let cnv t =
+    let parts = dest_list t in
+    SYM (BETAS_CONV (list_mk_comb(abs,
+      (map (fun ix -> el ix parts) indices)))) in
+  let gen t =
+    GENL (intersect (frees (concl t)) oregs) t in
+  map (gen o CONV_RULE (ONCE_DEPTH_CONV cnv)) thmlist;;
+
+let EVOLVESC_TO_IMPS_TAC = RULE_ASSUM_TAC
+  (fun a -> try GEN_ALL (GMATCH_MP' EVOLVEC_TO_IMP a) with Failure _ -> a) ;;
+
+let pair_sub_THM = prove(
+ `(!y x z. RS A (J x y z) -->_c RS B (J 0 (x + y) (x + z))) ==>
+  (!x y. RS B (J x y 0) -->_c RS C (J x 0 (y + 0))) ==>
+  (!y z x. RS B (J x y (SUC z)) -->_c
+    RS B (J 0 ((z + x) + SUC y) ((z + x) + 0))) ==>
+  RS A (J x y z) -->_c RS C (J 0 0 (cpair(x,z)+y))`,
+
+  REWRITE_TAC[ADD_CLAUSES; CPAIR_DEF] THEN INTRO_TAC "a; b0; bs" THEN
+  REMOVE_THEN "b0" MP_TAC THEN EVOLVESC_TO_IMPS_TAC THEN
+  ASM IMP_REWRITE_TAC[] THEN STRIP_TAC THEN SPEC_TAC(`y:num`, `y:num`) THEN
+  SPEC_TAC(`x + z`, `w:num`) THEN INDUCT_TAC THEN
+  ASM IMP_REWRITE_TAC[MULT; ADD; DIV_0] THEN
+  ASM_REWRITE_TAC[ARITH_RULE `
+    w + 0 = w /\ SUC ((w + 0) + x + y) = x + y + SUC w /\
+    ((w * SUC (w + 1) + SUC (w + 1)) DIV 2 + x) + y =
+      ((w * (w + 1)) DIV 2 + x) + (y + SUC w)`]);;
+
+(*
+ thms_of_sub (LINES_OF_SUB_SIMP (702,12)) |> unshuffle_vars
+ rws rtw rs1
+
+ `(!y x z. RS A (J x y z) -->_c RS B (J 0 0 (x + z))) ==>
+  (!x y. RS B (J x y 0) -->_c RS D (J x y 0)) ==>
+  (!x y z. RS B (J x y (SUC z)) -->_c RS C (J x (SUC y) z)) ==>
+  (!y z. RS C (J 0 y z) -->_c RS B (J (y + 0) 0 z)) ==>
+  (!x y z. RS C (J (SUC x) y z) -->_c RS B (J x y z)) ==>
+  RS A (J x y z) -->_c RS D (J (csnd (x + z)) (cfst (x + z)) 0)`
+
+  STRIP_TAC THEN EVOLVESC_TO_IMPS_TAC THEN ASM IMP_REWRITE_TAC[] THEN
+  SPEC_TAC(`x + z`, `w:num`) THEN
+
+*)
+
+ (*TODO rename variables*)
+let recognize_pairing ll = try match ll with
+    [Lop [l1]; Lop [l2;l3]] -> [Lop [
+      BETA_RULE (rev_itlist (C MATCH_MP)
+        (unshuffle_vars [l1; l2; l3]) pair_sub_THM)]]
+  | _ -> ll
+  with _ -> ll;;
+
+(*
+let [t1; t2; t3] = LINES_OF_SUB_ISD (495,12) |> simplifycf |> thms_of_sub |> unshuffle_vars in
+MATCH_MP (MATCH_MP (MATCH_MP pair_sub_THM t1) t2) t3
+
+*)
+
 let LINES_OF_SUB_S =
   memo_fix (fun r addr -> simplifycf (LINES_OF_SUB_C addr));;
 let LINES_OF_SUB_SD =
@@ -1235,6 +1313,9 @@ let LINES_OF_SUB_ISD =
   memo_fix (fun r addr -> decrloop_sub (simplifycf (inline_sub r (LINES_OF_SUB_C addr))));;
 let LINES_OF_SUB_SDS =
   memo_fix (fun r addr -> simplifycf (decrloop_sub (simplifycf (LINES_OF_SUB_C addr))));;
+
+let LINES_OF_SUB_SIMP =
+  memo_fix (fun r addr -> recognize_pairing (simplifycf (decrloop_sub (simplifycf (inline_sub r (LINES_OF_SUB_C addr))))));;
 
 (*
 install_user_printer("regname",fun f tm ->
