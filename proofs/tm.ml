@@ -1218,7 +1218,30 @@ let decrloop_sub ls =
     | _ -> l in
   map decrloop_line ls;;
 
+let inline_sub r ls =
+  let inline_line l = match l with
+      Lsub t -> (match r (callee_of_line l) with
+          [Lop [lop]] -> Lop [CONV_RULE (REWRITE_CONV [INC_PC])
+            (PROVE_HYP t (INST [rand (concl t),`pc:bool list`] lop))]
+        | _ -> l)
+    | _ -> l in
+  map inline_line ls;;
+
 let LINES_OF_SUB_S =
   memo_fix (fun r addr -> simplifycf (LINES_OF_SUB_C addr));;
 let LINES_OF_SUB_SD =
   memo_fix (fun r addr -> decrloop_sub (simplifycf (LINES_OF_SUB_C addr)));;
+let LINES_OF_SUB_ISD =
+  memo_fix (fun r addr -> decrloop_sub (simplifycf (inline_sub r (LINES_OF_SUB_C addr))));;
+let LINES_OF_SUB_SDS =
+  memo_fix (fun r addr -> simplifycf (decrloop_sub (simplifycf (LINES_OF_SUB_C addr))));;
+
+(*
+install_user_printer("regname",fun f tm ->
+  let nm,ty = dest_var tm in let n::ns = explode nm in
+  if n <> "r" || ty <> `:num` then failwith "" else
+  let nns = int_of_string (implode ns) in
+  let alias = el nns ["rpl";"rs1";"rs2";"rnp";"rt2";"raxc";"rp1";"rp2";"rp3";
+    "rws";"rtw";"rs3"] in
+  pp_print_string f alias);;
+*)
