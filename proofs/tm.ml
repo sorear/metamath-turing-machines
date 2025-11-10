@@ -1,5 +1,3 @@
-let _ = unset_verbose_symbols();;
-
 (* hol-light usage notes
 
    still underusing directed conversions, implicational and target rewriting,
@@ -1262,6 +1260,10 @@ let unshuffle_vars thmlist =
 let EVOLVESC_TO_IMPS_TAC = RULE_ASSUM_TAC
   (fun a -> try GEN_ALL (GMATCH_MP' EVOLVEC_TO_IMP a) with Failure _ -> a) ;;
 
+let EVOLVESC_TO_IMPS_TAC' = RULE_ASSUM_TAC
+  (fun a -> try CONJ a (GEN_ALL (GMATCH_MP' EVOLVEC_TO_IMP a))
+    with Failure _ -> a) ;;
+
 let pair_sub_THM = prove(
  `(!y x z. RS A (J x y z) -->_c RS B (J 0 (x + y) (x + z))) ==>
   (!x y. RS B (J x y 0) -->_c RS C (J x 0 y)) ==>
@@ -1322,21 +1324,66 @@ let recognize_pairing ll = try match ll with
   | _ -> ll
   with _ -> ll;;
 
-let LINES_OF_SUB_S =
-  memo_fix (fun r addr -> simplifycf (LINES_OF_SUB_C addr));;
-let LINES_OF_SUB_SD =
-  memo_fix (fun r addr -> decrloop_sub (simplifycf (LINES_OF_SUB_C addr)));;
-let LINES_OF_SUB_ISD =
-  memo_fix (fun r addr -> decrloop_sub (simplifycf (inline_sub r (LINES_OF_SUB_C addr))));;
-let LINES_OF_SUB_SDS =
-  memo_fix (fun r addr -> simplifycf (decrloop_sub (simplifycf (LINES_OF_SUB_C addr))));;
+let dest_dec_op = function
+  Lop [t0; tsuc] -> el (index `0`
+    (dest_list (rand (lhand (concl t0))))) all_regs, t0, tsuc
+| _ -> failwith "dest_dec_op";;
 
-let LINES_OF_SUB_SIMP =
-  memo_fix (fun r addr -> recognize_pairing (simplifycf (decrloop_sub (simplifycf (inline_sub r (LINES_OF_SUB_C addr))))));;
+let TRICOND_THM = prove(
+ `(!v w. RS A (S 0       w) -->_c RS C (S 0 w) /\
+         RS A (S (SUC v) w) -->_c RS B (S v w) /\
+         RS B (S v       0) -->_c RS G (W v 0) /\
+         RS B (S v (SUC w)) -->_c RS A (S v w) /\
+         RS C (S v       0) -->_c RS E (V v 0) /\
+         RS C (S v (SUC w)) -->_c RS D (U v w)) ==>
+  (v < w ==> RS A (S v w) -->_c RS D (U 0 (w - v - 1))) /\
+  (v = w ==> RS A (S v w) -->_c RS E (V 0 0)) /\
+  (w < v ==> RS A (S v w) -->_c RS G (W (v - w - 1) 0))`,
+
+  REWRITE_TAC[GSYM AND_FORALL_THM] THEN REPEAT STRIP_TAC THEN
+  POP_ASSUM MP_TAC THEN EVOLVESC_TO_IMPS_TAC' THEN
+  SPEC_TAC(`w:num`,`w:num`) THEN SPEC_TAC(`v:num`,`v:num`) THEN
+  INDUCT_TAC THEN INDUCT_TAC THEN
+  ASM_SIMP_TAC[NOT_SUC; SUC_INJ; LT_0; SUB_0; SUC_SUB1; LT_SUC;
+    SUB_SUC; LT] THEN ASM IMP_REWRITE_TAC[]);;
+
+let ltgtjoin = MATCH_MP (TAUT `(A \/ B \/ C) ==>
+  (A ==> P) /\ (B ==> P) ==> ~C ==> P`) (SPEC_ALL LT_CASES);;
+let tricond_line al lassoc =
+  let air,a0,asuc = dest_dec_op al in
+  let bir,b0,bsuc = dest_dec_op (assoc (lhand (rand (concl asuc))) lassoc) in
+  let cir,c0,csuc = dest_dec_op (assoc (lhand (rand (concl a0))) lassoc) in
+  if bir <> cir || air = bir then failwith "inconsistent regs" else
+  let bundle = GENL[air; bir](end_itlist CONJ [a0;asuc;b0;bsuc;c0;csuc]) in
+  let [l;e;g] = CONJUNCTS (CONV_RULE (REWRITE_CONV [ADD00])
+    (MATCH_MP TRICOND_THM bundle)) in
+  Lop (map (renormalize_vars o UNDISCH)
+    (try[MATCH_MP ltgtjoin (CONJ l g); e] with Failure _ -> [l;e;g]));;
+
+let tricond ls =
+  let lassoc = map (fun l -> addr_of_line l,l) ls in
+  map (fun l -> try tricond_line l lassoc with Failure _ -> l) ls ;;
+
+let LINES_OF_SUB_SIMP = memo_fix (fun r addr ->
+  LINES_OF_SUB_C addr |> inline_sub r |> simplifycf |> decrloop_sub |>
+  tricond |> simplifycf |> recognize_pairing);;
+
+(* abstract interpretation *)
+
+(*
+let abstract_interpret lines
+*)
 
 (*
  15, 284, 309
  4, 62, 81
+ 4, 56, 70
+
+let unsub_thm = PROVE_HYP DISPATCH_ROOT o INST [`[]:bool list`,`pc:bool list`];;
+let unsub_line = function Lsub t -> Lsub (unsub_thm t) | Lop tt -> Lop (map unsub_thm tt);;
+
+unset_verbose_symbols();;
+set_margin 200;;
 
 install_user_printer("regname",fun f tm ->
   let nm,ty = dest_var tm in let n::ns = explode nm in
@@ -1348,7 +1395,8 @@ install_user_printer("regname",fun f tm ->
 
 install_user_printer("pc",fun f tm ->
   let bs,fin = splitlist dest_cons tm in
-  if bs = [] || fin <> `pc:bool list` then failwith "not a pc" else
+  if not (bs <> [] && fin = `pc:bool list` ||
+      length bs = pc_bits && fin = `[]:bool list`) then fail() else
   let s = implode (rev (map (fun b -> if dest_bool b then "1" else "0") bs)) in
   pp_print_string f ("#"^s^"(pc)"));;
 
