@@ -1232,6 +1232,18 @@ let inline_sub r ls =
     | _ -> l in
   map inline_line ls;;
 
+let rec force_inline r ls =
+  let rec
+    inline_line l = match l with
+      Lop _ -> [l]
+    | Lsub t -> map (adjust_line t) (force_inline r (r (callee_of_line l))) and
+    adjust_cl t cl = CONV_RULE (REWRITE_CONV [INC_PC])
+      (PROVE_HYP t (INST [rand (concl t),`pc:bool list`] cl)) and
+    adjust_line t l = match l with
+      Lop tt -> Lop (map (adjust_cl t) tt)
+    | _ -> fail() in
+  flat (map inline_line ls);;
+
 let unshuffle_vars thmlist =
   let regfiles = map dest_list (flat (map (fun t ->
     [rand (lhand (concl t)); rand (rand (concl t))]) thmlist)) in
@@ -1370,11 +1382,42 @@ let LINES_OF_SUB_SIMP = memo_fix (fun r addr ->
 
 (* abstract interpretation *)
 
-(*
-let abstract_interpret lines
-*)
+let curry_eq_tmevc =
+  EQT_ELIM (SIMP_CONV[] `y -->_c z ==> x = y ==> x -->_c z`);;
+let cond_eq_tmevc =
+  EQT_ELIM (SIMP_CONV[] `(h ==> y -->_c z) ==> x = y ==> h ==> x -->_c z`);;
+let cond_curried_tmevc =
+  MATCH_MP (TAUT `(p/\q==>r)==>(h==>q)==>p==>(h==>r)`) TMEVC_TRANS;;
+
+let abstract_interpret lines rwths =
+  let lassoc = map (fun l -> addr_of_line l,l) lines in
+  let impcon = `-->_c` in
+  let try_clause t cl =
+    let cl' = match subtract (hyp cl) (hyp t) with
+      (h::hs) -> DISCH h cl | [] -> cl in
+    let rule = if is_eq (concl t) then
+      if is_imp (concl cl') then cond_eq_tmevc else curry_eq_tmevc else
+      if is_imp (concl cl') then cond_curried_tmevc else curried_tmevc in
+    let rw = CONV_RULE (REWRITE_CONV rwths)
+        (MATCH_MP (MATCH_MP rule cl') t) in
+    if rator (rator (concl rw)) = impcon then rw else fail() in
+  let rec try_clauses t = function
+    cl1::rest -> (try try_clause t cl1
+      with Failure _ -> try_clauses t rest)
+  | _ -> fail() in
+  let step t =
+    let nexta = lhand (rand (concl t)) in
+    let l2 = assoc nexta lassoc in
+    let clauses = match l2 with Lop tt -> tt | _ -> failwith "sub" in
+    try_clauses t clauses in
+  step;;
 
 (*
+
+let lines = force_inline LINES_OF_SUB_SIMP (LINES_OF_SUB_SIMP (448,0)) |> map unsub_line in
+let ai = abstract_interpret lines [ADD00; CFSTSNDP; ASSUME `~((0 <> 2) <> 2 = 0)`; ASSUME `~(0 = 2)`] in
+REFL `RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F] [SUC (SUC 0 <> 2 <> 3 <> 4 <> 5);0;0;0;0;0;0;0;0;0<>0;0;0]` |> repeat ai
+
  15, 284, 309
  4, 62, 81
  4, 56, 70
