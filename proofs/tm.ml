@@ -1,4 +1,3 @@
-let _ = prioritize_int();;
 let _ = unset_verbose_symbols();;
 
 (* hol-light usage notes
@@ -242,6 +241,7 @@ let transition_table_CONV = GEN_REWRITE_CONV DEPTH_CONV [transition_table_DEF;nm
    zipper as a definition, or a symmetric zipper, or perhaps introduce colists
    as an intermediate stage *)
 
+prioritize_int();;
 let list_tape_DEF = define `list_tape l tp = \i. &0 <= tp+i /\ tp+i < &(LENGTH l) /\ EL (num_of_int (tp+i)) l`;;
 
 let list_tape_SHIFT = prove(`shift j (list_tape l tp) = list_tape l (tp+j)`, SIMP_TAC[tape_shift_DEF;list_tape_DEF;INT_ADD_ASSOC]);;
@@ -327,6 +327,8 @@ let zip_read = prove(
 let zip_init = prove(`initial = 1,rzip_tape [] []`,
   REWRITE_TAC[initial_DEF; PAIR_EQ; FUN_EQ_THM; rzip_tape; list_tape_DEF;
    LENGTH; REVERSE; APPEND] THEN ARITH_TAC);;
+
+prioritize_num();;
 
 (* semantics
 
@@ -1088,8 +1090,6 @@ memo_fix (fun _ addr -> map abs_line (LINES_OF_SUB addr));;
 
 (* cantor pairs *)
 
-prioritize_num();;
-
 let CPAIR_INDUCT = prove(
  `P 0 0 /\ (!x y. P x (SUC y) ==> P (SUC x) y) /\
   (!x. P x 0 ==> P 0 (SUC x)) ==> !x y. P x y`,
@@ -1099,27 +1099,30 @@ let CPAIR_INDUCT = prove(
   (ASM IMP_REWRITE_TAC[ARITH_RULE `SUC x + y = x + SUC y`]) THEN
   ASM_SIMP_TAC[ADD_CLAUSES; LT]);;
 
-let CPAIR_DEF = define`cpair(x,y) = ((x + y) * ((x + y) + 1)) DIV 2 + x`;;
+parse_as_infix("<>",(14,"right"));;
+let CPAIR_DEF = define`x <> y = ((x + y) * ((x + y) + 1)) DIV 2 + x`;;
 let CPAIR_REC = prove(
- `cpair(0,0) = 0 /\ cpair(SUC x,y) = SUC (cpair(x,SUC y)) /\
-  cpair(0,SUC y) = SUC (cpair(y,0))`, REWRITE_TAC[CPAIR_DEF] THEN ARITH_TAC);;
+ `0 <> 0 = 0 /\ SUC x <> y = SUC (x <> SUC y) /\ 0 <> SUC y = SUC (y <> 0)`,
+  REWRITE_TAC[CPAIR_DEF] THEN ARITH_TAC);;
 
 let CUNPAIR_DEF = new_recursive_definition num_RECURSION
-  `cunpair 0 = 0,0 /\ cunpair (SUC p) =
-         (match cunpair p with x,0 -> 0,SUC x | x,SUC y -> SUC x,y)`;;
-let CUNPAIRPAIR = prove(`!x y. cunpair (cpair(x,y)) = x,y`,
-  MATCH_MP_TAC CPAIR_INDUCT THEN SIMP_TAC[CPAIR_REC; CUNPAIR_DEF]);;
-let CPAIRUNPAIR = prove(`!p. cpair (cunpair p) = p`,
-  INDUCT_TAC THEN SIMP_TAC[CPAIR_REC; CUNPAIR_DEF] THEN POP_ASSUM MP_TAC THEN
-  SPEC_TAC(`cunpair p`,`pp:num#num`) THEN MATCH_MP_TAC pair_INDUCT THEN
-  GEN_TAC THEN INDUCT_TAC THEN SIMP_TAC[CPAIR_REC]);;
+  `CUNPAIR 0 = 0,0 /\ CUNPAIR (SUC p) = (match SND (CUNPAIR p) with
+     0 -> 0,SUC (FST (CUNPAIR p)) | SUC y -> SUC (FST (CUNPAIR p)),y)`;;
+let CFST_DEF = define`CFST p = FST (CUNPAIR p)`;;
+let CSND_DEF = define`CSND p = SND (CUNPAIR p)`;;
+let CFSTSND = prove(
+ `CFST 0 = 0 /\ CSND 0 = 0 /\
+  CFST (SUC p) = (match CSND p with 0 -> 0 | SUC y -> SUC (CFST p)) /\
+  CSND (SUC p) = (match CSND p with 0 -> SUC (CFST p) | SUC y -> y)`,
+ REWRITE_TAC[CFST_DEF; CSND_DEF; CUNPAIR_DEF] THEN
+ STRUCT_CASES_TAC (SPEC `SND (CUNPAIR p)` num_CASES) THEN
+ REWRITE_TAC[]);;
 
-let CFST_DEF = define`cfst p = FST (cunpair p)`;;
-let CSND_DEF = define`csnd p = SND (cunpair p)`;;
-let CFST = prove(`cfst (cpair (x,y)) = x`, SIMP_TAC[CUNPAIRPAIR; CFST_DEF]);;
-let CSND = prove(`csnd (cpair (x,y)) = y`, SIMP_TAC[CUNPAIRPAIR; CSND_DEF]);;
-let CPAIR = prove(`cpair (cfst p,csnd p) = p`,
-  SIMP_TAC[CFST_DEF; CSND_DEF; PAIR; CPAIRUNPAIR]);;
+let CFSTSNDP = prove(`!x y. CFST (x <> y) = x /\ CSND (x <> y) = y`,
+  MATCH_MP_TAC CPAIR_INDUCT THEN SIMP_TAC[CPAIR_REC; CFSTSND]);;
+let CPAIR = prove(`!p. CFST p <> CSND p = p`,
+  INDUCT_TAC THEN SIMP_TAC[CPAIR_REC; CFSTSND] THEN POP_ASSUM MP_TAC THEN
+  STRUCT_CASES_TAC (SPEC `CSND p` num_CASES) THEN SIMP_TAC[CPAIR_REC]);;
 
 (* simplification
 
@@ -1267,7 +1270,7 @@ let pair_sub_THM = prove(
   (!x y. RS B (J x y 0) -->_c RS C (J x 0 y)) ==>
   (!y z x. RS B (J x y (SUC z)) -->_c
     RS B (J 0 ((z + x) + SUC y) (z + x))) ==>
-  RS A (J x y z) -->_c RS C (J 0 0 (cpair(x,z)+y))`,
+  RS A (J x y z) -->_c RS C (J 0 0 ((x <> z) + y))`,
 
   REWRITE_TAC[ADD_CLAUSES; CPAIR_DEF] THEN INTRO_TAC "a; b0; bs" THEN
   REMOVE_THEN "b0" MP_TAC THEN EVOLVESC_TO_IMPS_TAC THEN
@@ -1288,7 +1291,7 @@ let pair_sub_THM = prove(
   (!x y z. RS B (J x y (SUC z)) -->_c RS C (J x (SUC y) z)) ==>
   (!y z. RS C (J 0 y z) -->_c RS B (J (y + 0) 0 z)) ==>
   (!x y z. RS C (J (SUC x) y z) -->_c RS B (J x y z)) ==>
-  RS A (J x y z) -->_c RS D (J (csnd (x + z)) (cfst (x + z)) 0)`
+  RS A (J x y z) -->_c RS D (J (CSND (x + z)) (CFST (x + z)) 0)`
 
   STRIP_TAC THEN EVOLVESC_TO_IMPS_TAC THEN ASM IMP_REWRITE_TAC[] THEN
   SPEC_TAC(`x + z`, `w:num`) THEN
