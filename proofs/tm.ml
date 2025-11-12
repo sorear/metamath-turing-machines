@@ -1389,7 +1389,7 @@ let cond_eq_tmevc =
 let cond_curried_tmevc =
   MATCH_MP (TAUT `(p/\q==>r)==>(h==>q)==>p==>(h==>r)`) TMEVC_TRANS;;
 
-let abstract_interpret lines rwths =
+let abstract_interpret lines rwths hyths =
   let lassoc = map (fun l -> addr_of_line l,l) lines in
   let impcon = `-->_c` in
   let try_clause t cl =
@@ -1398,8 +1398,10 @@ let abstract_interpret lines rwths =
     let rule = if is_eq (concl t) then
       if is_imp (concl cl') then cond_eq_tmevc else curry_eq_tmevc else
       if is_imp (concl cl') then cond_curried_tmevc else curried_tmevc in
-    let rw = CONV_RULE (REWRITE_CONV rwths)
-        (MATCH_MP (MATCH_MP rule cl') t) in
+    let cv = RAND_CONV (REWRITE_CONV rwths) in
+    let cv' = if is_imp (concl cl') then
+      BINOP2_CONV (REWRITE_CONV hyths) cv THENC REWRITE_CONV[] else cv in
+    let rw = CONV_RULE cv' (MATCH_MP (MATCH_MP rule cl') t) in
     if rator (rator (concl rw)) = impcon then rw else fail() in
   let rec try_clauses t = function
     cl1::rest -> (try try_clause t cl1
@@ -1412,18 +1414,142 @@ let abstract_interpret lines rwths =
     try_clauses t clauses in
   step;;
 
+(** logic state setup and evolution rules
+    this should be the only part with deep knowledge of zf2.nql compilation *)
+
+let entry_pc_tm = `[F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]`;;
+
+let unsub_thm = PROVE_HYP DISPATCH_ROOT o
+  INST [`[]:bool list`,`pc:bool list`];;
+let unsub_line = function Lsub t -> Lsub (unsub_thm t)
+                        | Lop tt -> Lop (map unsub_thm tt);;
+
+let CFSTSND0 = prove(`CFST 0 = 0 /\ CSND 0 = 0`, REWRITE_TAC[CFSTSND]);;
+
+let TRY_COMBINE =
+  let OR_SIMP = TAUT `p \/ q /\ ~p <=> p \/ q` in
+  let OR_MIDDLE = TAUT `~p /\ ~q \/ p \/ q` in
+  let OR_MIDDLE2 = TAUT `~p /\ ~q /\ r \/ (p \/ q) /\ r <=> r` in
+  let combine_t = TAUT `(p ==> r) ==> (q ==> r) ==> (p \/ q) ==> r` in
+  let undisch_t0 = TAUT `p ==> T ==> p` in
+  let undisch_t2 = TAUT `(p ==> q ==> r) ==> (q /\ p) ==> r` in
+  let NOT1 = prove(`(x = 0 \/ x = SUC (SUC (PRE (PRE x))) <=> ~(x = 0 <> 1))
+    /\ (x = SUC 0 <=> x = 0 <> 1)`, REWRITE_TAC[CPAIR_DEF] THEN ARITH_TAC) in
+  let rec DISCH_CONJ thm = match hyp thm with [] -> MATCH_MP undisch_t0 thm |
+    h::_ -> MATCH_MP undisch_t2 (DISCH_CONJ (DISCH h thm)) in
+  fun rws thm1 thm2 ->
+    if not (aconv (concl thm1) (concl thm2)) then [thm1; thm2] else
+    let rws' = rws @ [GSYM LEFT_OR_DISTRIB; GSYM RIGHT_OR_DISTRIB; NOT1;
+      EXCLUDED_MIDDLE; CONJ_ACI; OR_SIMP; OR_MIDDLE; OR_MIDDLE2] in
+    [PROVE_HYP TRUTH (UNDISCH (CONV_RULE (LAND_CONV (REWRITE_CONV rws'))
+      (MATCH_MP (MATCH_MP combine_t (DISCH_CONJ thm1)) (DISCH_CONJ thm2))))];;
+
+let COMBINE rws thm1 thm2 = match TRY_COMBINE rws thm1 thm2
+  with [t] -> t | _ -> failwith("COMBINE");;
+
+let CPAIR_EQ = prove(`!x y a b. x <> y = a <> b <=> x = a /\ y = b`,
+  REPEAT STRIP_TAC THEN EQ_TAC THEN SIMP_TAC[] THEN STRIP_TAC THEN
+  CONV_TAC (ONCE_DEPTH_CONV (SUBS_CONV (CONJUNCTS
+   (GSYM (SPECL [`x:num`;`y:num`] CFSTSNDP))))) THEN
+  ASM_SIMP_TAC[] THEN REWRITE_TAC[CFSTSNDP]);;
+
+let LSTATE = define
+ `LS pl np ws = UNIONS {RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
+    [pl; 0; 0; np; ot2; oaxc; op1; op2; op3; CSND ws; CFST ws; 0] |
+    ot2,oaxc,op1,op2,op3 | T}`;;
+
+let TMEVC_ABS = prove(
+ `(!a. a IN A ==> (?b. b IN B /\ a -->_c b)) ==> UNIONS A -->_c UNIONS B`,
+  REWRITE_TAC[TMEVC_DEF; FORALL_IN_UNIONS; EXISTS_IN_UNIONS] THEN
+  MESON_TAC[]);;
+
+let TMEVC_ABSL = prove(`UNIONS A -->_c B <=> !a. a IN A ==> a -->_c B`,
+  REWRITE_TAC[TMEVC_DEF; FORALL_IN_UNIONS] THEN MESON_TAC[]);;
+
+let LSTATE_LIFT = prove(
+ `(!ot2 oaxc op1 op2 op3. RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
+       [pl; 0; 0; np; ot2; oaxc; op1; op2; op3; ws; tw; 0] -->_c
+     RS[F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
+       [pl'; 0; 0; np'; ot2'; oaxc'; op1'; op2'; op3'; ws'; tw'; 0]) ==>
+  LS pl np (tw <> ws) -->_c LS pl' np' (tw' <> ws')`,
+  REWRITE_TAC[LSTATE] THEN DISCH_TAC THEN MATCH_MP_TAC TMEVC_ABS THEN
+  REWRITE_TAC[IN_ELIM_THM; CFSTSNDP] THEN ASM_MESON_TAC[]);;
+
+let LSTATE_LIFTH = prove(
+ `(!ot2 oaxc op1 op2 op3. RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
+       [pl; 0; 0; np; ot2; oaxc; op1; op2; op3; ws; tw; 0] -->_c {halted}) ==>
+  LS pl np (tw <> ws) -->_c {halted}`,
+  REWRITE_TAC[LSTATE; TMEVC_ABSL] THEN DISCH_TAC THEN
+  REWRITE_TAC[IN_ELIM_THM; CFSTSNDP] THEN ASM_MESON_TAC[]);;
+
+let LSTATE_LOOP_THMS =
+  let lines = force_inline LINES_OF_SUB_SIMP (LINES_OF_SUB_SIMP (448,0)) |>
+    map unsub_line in
+  let dlines = filter (fun l -> addr_of_line l <> entry_pc_tm) lines in
+  let do_ai_first a1 a2 t = repeat(abstract_interpret lines
+    (ADD00 :: CFSTSNDP :: CFSTSND0 :: a1) a2) t in
+  let do_ai a1 a2 t = repeat(abstract_interpret dlines
+    (ADD00 :: CFSTSNDP :: CFSTSND0 :: a1) a2) t in
+  let base_init_t = REFL `RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
+    [pl; 0; 0; np; ot2; oaxc; op1; op2; op3; ws1 <> ws; tw; 0]` in
+  let do_axc t =
+    if not(vfree_in `axc:num` (concl t)) then [t] else
+    let sucify n = funpow n (fun tm -> mk_comb(`SUC`,tm)) in
+    INST[sucify 18 `axcp:num`,`axc:num`] t ::
+    map (fun axc -> INST[sucify axc `0`,`axc:num`] t) (0 -- 17) in
+  let do_mp t =
+    let [_; _; _; _; _; _; p1; p2; p3; _; _; _] =
+      dest_list (rand (rand (concl t))) in
+    let cond = mk_eq(mk_binop `<>` (mk_binop `<>` p3 p1) `2`, p2) in
+    TRY_COMBINE [] (do_ai [] [ASSUME cond] t)
+      (do_ai [] [ASSUME (mk_neg cond)] t) in
+  let do_b6a t =
+    let [_; _; _; _; _; _; p1; p2; p3; _; _; _] =
+      dest_list (rand (rand (concl t))) in
+    let p1p3 = mk_eq(p1,p3) and p2p3 = mk_eq(p2,p3) in
+    TRY_COMBINE [] (do_ai [] [ASSUME (mk_conj(mk_neg(p1p3),mk_neg(p2p3)))] t)
+      (COMBINE [] (do_ai [] [ASSUME(p1p3)] t)
+        (do_ai [] [ASSUME(mk_conj(mk_neg(p1p3),p2p3))] t)) in
+  let do_check t =
+    let rlist = rand (rand (concl t)) in
+    let [_; _; _; _; _; _; _; _; _; _; tw; _] = dest_list rlist in
+    if tw = `0` then [t] else
+    let twcase v =
+      let cv eq = funpow 4 RAND_CONV (LAND_CONV (ONCE_REWRITE_CONV [eq])) in
+      do_ai [] [] (CONV_RULE (cv(ASSUME(mk_eq(tw,v)))) t) in
+    let nonhalt = COMBINE [CPAIR_EQ; ARITH_EQ] (twcase `0`)
+      (twcase (vsubst [tw,`q:num`] `SUC (SUC (PRE (PRE q)))`)) in
+    if is_var tw then [nonhalt; twcase `SUC 0`] else [nonhalt] in
+  let to_ls thm =
+    try DISCH_ALL (MATCH_MP LSTATE_LIFT (GENL [`ot2:num`; `oaxc:num`;
+          `op1:num`; `op2:num`;`op3:num`] thm))
+    with Failure _ ->
+    try DISCH_ALL (MATCH_MP LSTATE_LIFTH (GENL [`ot2:num`; `oaxc:num`;
+          `op1:num`; `op2:num`;`op3:num`] thm))
+    with Failure _ -> thm in
+  [INST[`SUC (axc <> p1 <> p2 <> p3 <> pl)`,`pl:num`] base_init_t;
+  INST[`SUC (axc <> p1 <> p2 <> p3 <> pl)`,`np:num`;`0`,`pl:num`] base_init_t;
+  INST[`0`,`np:num`;`0`,`pl:num`] base_init_t] |>
+  map (do_ai_first [ARITH_SUC] []) |> map do_axc |> flat |>
+  map (do_ai [] []) |> map do_mp |> flat |> map do_b6a |> flat |>
+  map do_check |> flat |> map to_ls |>
+  map (CONV_RULE (REWRITE_CONV [ADD1; ADD_AC] THENC NUM_REDUCE_CONV));;
+
 (*
 
-let lines = force_inline LINES_OF_SUB_SIMP (LINES_OF_SUB_SIMP (448,0)) |> map unsub_line in
-let ai = abstract_interpret lines [ADD00; CFSTSNDP; ASSUME `~((0 <> 2) <> 2 = 0)`; ASSUME `~(0 = 2)`] in
-REFL `RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F] [SUC (SUC 0 <> 2 <> 3 <> 4 <> 5);0;0;0;0;0;0;0;0;0<>0;0;0]` |> repeat ai
+let wff_INDUCT, wff_RECURSION = define_type "wff = =: num num | @: num num |
+  ==>: wff wff | ~: wff | !: num wff | ATOM num";;
+parse_as_infix("=:",(20,"right"));;
+parse_as_infix("@:",(20,"right"));;
+parse_as_infix("==>:",(16,"right"));;
 
- 15, 284, 309
- 4, 62, 81
- 4, 56, 70
-
-let unsub_thm = PROVE_HYP DISPATCH_ROOT o INST [`[]:bool list`,`pc:bool list`];;
-let unsub_line = function Lsub t -> Lsub (unsub_thm t) | Lop tt -> Lop (map unsub_thm tt);;
+let ENCODE_WFF = define
+ `encode_wff (x =: y) = (x <> y) <> 0 /\
+  encode_wff (x @: y) = (x <> y) <> 1 /\
+  encode_wff (p ==>: q) = (encode_wff p <> encode_wff q) <> 2 /\
+  encode_wff (~: p) = encode_wff p <> 3 /\
+  encode_wff (!: x p) = (x <> encode_wff p) <> 4 /\
+  encode_wff (ATOM n) = CFST n <> (5 + CSND n)`;;
 
 unset_verbose_symbols();;
 set_margin 200;;
