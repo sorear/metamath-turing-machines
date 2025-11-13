@@ -1426,6 +1426,9 @@ let unsub_line = function Lsub t -> Lsub (unsub_thm t)
 
 let CFSTSND0 = prove(`CFST 0 = 0 /\ CSND 0 = 0`, REWRITE_TAC[CFSTSND]);;
 
+let NOT1_CHECK = prove(`(x = 0 \/ x = SUC (SUC (PRE (PRE x))) <=>
+  ~(x = (0 <> 0) <> 1)) /\ (x = SUC 0 <=> x = (0 <> 0) <> 1)`,
+  REWRITE_TAC[CPAIR_DEF] THEN ARITH_TAC);;
 let TRY_COMBINE =
   let OR_SIMP = TAUT `p \/ q /\ ~p <=> p \/ q` in
   let OR_MIDDLE = TAUT `~p /\ ~q \/ p \/ q` in
@@ -1433,13 +1436,11 @@ let TRY_COMBINE =
   let combine_t = TAUT `(p ==> r) ==> (q ==> r) ==> (p \/ q) ==> r` in
   let undisch_t0 = TAUT `p ==> T ==> p` in
   let undisch_t2 = TAUT `(p ==> q ==> r) ==> (q /\ p) ==> r` in
-  let NOT1 = prove(`(x = 0 \/ x = SUC (SUC (PRE (PRE x))) <=> ~(x = 0 <> 1))
-    /\ (x = SUC 0 <=> x = 0 <> 1)`, REWRITE_TAC[CPAIR_DEF] THEN ARITH_TAC) in
   let rec DISCH_CONJ thm = match hyp thm with [] -> MATCH_MP undisch_t0 thm |
     h::_ -> MATCH_MP undisch_t2 (DISCH_CONJ (DISCH h thm)) in
   fun rws thm1 thm2 ->
     if not (aconv (concl thm1) (concl thm2)) then [thm1; thm2] else
-    let rws' = rws @ [GSYM LEFT_OR_DISTRIB; GSYM RIGHT_OR_DISTRIB; NOT1;
+    let rws' = rws @ [GSYM LEFT_OR_DISTRIB; GSYM RIGHT_OR_DISTRIB; NOT1_CHECK;
       EXCLUDED_MIDDLE; CONJ_ACI; OR_SIMP; OR_MIDDLE; OR_MIDDLE2] in
     [PROVE_HYP TRUTH (UNDISCH (CONV_RULE (LAND_CONV (REWRITE_CONV rws'))
       (MATCH_MP (MATCH_MP combine_t (DISCH_CONJ thm1)) (DISCH_CONJ thm2))))];;
@@ -1516,7 +1517,7 @@ let LSTATE_LOOP_THMS =
     if tw = `0` then [t] else
     let twcase v =
       let cv eq = funpow 4 RAND_CONV (LAND_CONV (ONCE_REWRITE_CONV [eq])) in
-      do_ai [] [] (CONV_RULE (cv(ASSUME(mk_eq(tw,v)))) t) in
+      do_ai [] [NOT1_CHECK] (CONV_RULE (cv(ASSUME(mk_eq(tw,v)))) t) in
     let nonhalt = COMBINE [CPAIR_EQ; ARITH_EQ] (twcase `0`)
       (twcase (vsubst [tw,`q:num`] `SUC (SUC (PRE (PRE q)))`)) in
     if is_var tw then [nonhalt; twcase `SUC 0`] else [nonhalt] in
@@ -1535,13 +1536,15 @@ let LSTATE_LOOP_THMS =
   map do_check |> flat |> map to_ls |>
   map (CONV_RULE (REWRITE_CONV [ADD1; ADD_AC] THENC NUM_REDUCE_CONV));;
 
-(*
+(* wffs, wff encoding, axioms and provability *)
 
 let wff_INDUCT, wff_RECURSION = define_type "wff = =: num num | @: num num |
   ==>: wff wff | ~: wff | !: num wff | ATOM num";;
-parse_as_infix("=:",(20,"right"));;
-parse_as_infix("@:",(20,"right"));;
+parse_as_infix("=:",(22,"right"));;
+parse_as_infix("@:",(22,"right"));;
+parse_as_infix("/\:",(21,"right"));;
 parse_as_infix("==>:",(16,"right"));;
+parse_as_infix("<=>:",(13,"right"));;
 
 let ENCODE_WFF = define
  `encode_wff (x =: y) = (x <> y) <> 0 /\
@@ -1550,6 +1553,101 @@ let ENCODE_WFF = define
   encode_wff (~: p) = encode_wff p <> 3 /\
   encode_wff (!: x p) = (x <> encode_wff p) <> 4 /\
   encode_wff (ATOM n) = CFST n <> (5 + CSND n)`;;
+
+let AXIOMS = end_itlist CONJ [
+  define`?: x p = ~: (!: x (~: p))`;
+  define`p /\: q = ~: (p ==>: ~: q)`;
+  define`p <=>: q = (p ==>: q) /\: (q ==>: p)`;
+
+  define`axB1 ph ps ch = (ph ==>: ps) ==>: (ps ==>: ch) ==>: ph ==>: ch`;
+  define`axB2 ph = (~: ph ==>: ph) ==>: ph`;
+  define`axB3 ph ps = ph ==>: ~: ph ==>: ps`;
+  define`axB4 x ph ps = !: x (ph ==>: ps) ==>: !: x ph ==>: !: x ps`;
+  define`axB6a x y z = (x =: y ==>: !: z (x =: y)) /\:
+    (x @: y ==>: !: z (x @: y))`;
+  define`axB6b x y ph = !: x (!: y ph) ==>: !: y (!: x ph)`;
+  define`axB6c x ph = ?: x (!: x ph) ==>: ph`;
+  define`axB7 x y = ?: x (x =: y)`;
+  define`axB8a x y z = x =: y ==>: x =: z ==>: y =: z`;
+  define`axB8b x y z = x =: y ==>: x @: z ==>: y @: z`;
+  define`axB8c x y z = x =: y ==>: z @: x ==>: z @: y`;
+  define`axEXT = !: 2 (2 @: 0 <=>: 2 @: 1) ==>: 0 =: 1`;
+  define`axREP ph = !: 3 (?: 1 (!: 2 (!: 1 ph ==>: 2 =: 1))) ==>:
+    ?: 1 (!: 2 (2 @: 1 <=>: ?: 3 (3 @: 0 /\: !: 1 ph)))`;
+  define`axPOW = ?: 1 (!: 2 (!: 3 (3 @: 2 ==>: 3 @: 0) ==>: 2 @: 1))`;
+  define`axUNI = ?: 1 (!: 2 (?: 3 (2 @: 3 /\: 3 @: 0) ==>: 2 @: 1))`;
+  define`axINF = ?: 1 ((0 @: 1) /\: !: 0 (0 @: 1 ==>:
+    ?: 2 ((2 @: 1) /\: !: 1 (1 @: 2 <=>: 1 =: 0))))`];;
+
+let provable, provable_INDUCT, provable_CASES = new_inductive_definition
+ `(!ph ps. provable (ph ==>: ps) /\ provable ph ==> provable ps) /\
+  (!x ph. provable ph ==> provable (!: x ph)) /\
+
+  (!ph ps ch. provable (axB1 ph ps ch)) /\
+  (!ph. provable (axB2 ph)) /\ (!ph ps. provable (axB3 ph ps)) /\
+
+  (!x ph ps. provable (axB4 x ph ps)) /\
+  (!x y z. ~(x = z) /\ ~(y = z) ==> provable (axB6a x y z)) /\
+  (!x y ph. provable (axB6b x y ph)) /\ (!x ph. provable (axB6c x ph)) /\
+  (!x y. provable (axB7 x y)) /\ (!x y z. provable (axB8a x y z)) /\
+  (!x y z. provable (axB8b x y z)) /\ (!x y z. provable (axB8c x y z)) /\
+
+  provable axEXT /\ (!ph. provable (axREP ph)) /\ provable axPOW /\
+  provable axUNI /\ provable axINF`;;
+
+let encode_wffstack = define
+ `encode_wffstack [] = 0 /\
+  encode_wffstack (w::ws) = encode_wff w <> encode_wffstack ws`;;
+
+let CPAIR_INDUCT = prove(`!P. (!x y. P (x <> y)) ==> !p. P p`,
+  REPEAT STRIP_TAC THEN POP_ASSUM (MP_TAC o SPECL[`CFST p`; `CSND p`]) THEN
+  SIMP_TAC[CPAIR]);;
+
+let cconcl = concl o UNDISCH_ALL;;
+
+let PUSH0 = prove(`0 <> encode_wffstack l = encode_wffstack (0 =: 0 :: l)`,
+  REWRITE_TAC[encode_wffstack; ENCODE_WFF; CPAIR_REC]);; 
+
+let encode_wff_11 = prove(`!ph ps. encode_wff ph = encode_wff ps <=> ph = ps`,
+  MATCH_MP_TAC wff_INDUCT THEN REPEAT STRIP_TAC THEN
+  SPEC_TAC(`ps:wff`,`ps:wff`) THEN MATCH_MP_TAC wff_INDUCT THEN
+  REPEAT STRIP_TAC THEN ASM_SIMP_TAC[ENCODE_WFF; CPAIR_EQ;
+    injectivity "wff"; distinctness "wff"; EQ_ADD_LCANCEL] THEN
+  CONV_TAC NUM_REDUCE_CONV THEN TRY ARITH_TAC THEN
+  SPEC_TAC(`a:num`,`a:num`) THEN MATCH_MP_TAC CPAIR_INDUCT THEN
+  REPEAT STRIP_TAC THEN
+  SPEC_TAC(`a':num`,`a':num`) THEN MATCH_MP_TAC CPAIR_INDUCT THEN
+  REPEAT STRIP_TAC THEN SIMP_TAC[CFSTSNDP; CPAIR_EQ]);;
+
+let wffeq1 = prove(`encode_wff pp = 1 <=> pp = 0 @: 0`,
+  REWRITE_TAC[SYM((REWRITE_CONV [CPAIR_DEF; ENCODE_WFF] THENC
+    NUM_REDUCE_CONV) `encode_wff (0 @: 0)`); encode_wff_11]);;
+
+let WSTATE_LOOP_THMS =
+  let rec prune_ws t =
+    let rec tail tm = if is_binop `<>` (rand tm) then tail (rand tm) else tm in
+    let st = rand (cconcl t) in
+    let ttail = if st <> `{halted}` then tail (rand st) else
+      tail (rand (lhand (cconcl t))) in
+    if not (is_var (lhand ttail)) then t else
+    if mem (lhand ttail) (freesl (hyp (UNDISCH_ALL t))) then t else
+    prune_ws (DISCH_ALL (SPEC_ALL (MATCH_MP CPAIR_INDUCT
+      (GENL [lhand ttail;rand ttail] (UNDISCH_ALL t))))) in
+  let decode t =
+    let sps = lhand (rator (lhand (cconcl t))) in
+    let sps = if sps = `0` then lhand (lhand (cconcl t)) else sps in
+    let ax = try dest_small_numeral (lhand (lhand sps)) with Failure _ -> 18 in
+    let t = if ax = 15 || ax = 1 || ax >= 3 && ax <= 5 then INST[`encode_wff pp1`,`p1:num`] t else t in
+    let t = if ax = 3 || ax = 5 || ax = 6 || ax = 9 then INST[`encode_wff pp2`,`p2:num`] t else t in
+    let t = if ax = 3 || ax = 6 || ax = 8 then INST[`encode_wff pp3`,`p3:num`] t else t in
+    let wind,wstk = splitlist (dest_binop `<>`) (rand (lhand (cconcl t))) in
+    let w2e v = mk_comb(`encode_wff`,mk_var(name_of v,`:wff`)),v in
+    INST ((`encode_wffstack wstk`,wstk) :: map w2e wind) t in
+  LSTATE_LOOP_THMS |> map prune_ws |> map decode |>
+  map (CONV_RULE (REWRITE_CONV[GSYM ENCODE_WFF; GSYM AXIOMS;
+    SYM (CONJUNCT2 encode_wffstack); PUSH0; encode_wff_11; wffeq1]));;
+
+(*
 
 unset_verbose_symbols();;
 set_margin 200;;
