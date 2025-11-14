@@ -377,6 +377,11 @@ let BEHAVIOR =
     CONJ (MATCH_MP tm_evolves_BASE (cv (lhand tm')))
          (MATCH_MP tm_evolves_BASE (cv (rand tm'))) ;;
 
+let HALTED_STICKY = MATCH_MP tm_evolves_BASE (EQT_ELIM
+  ((REWRITE_CONV[halted_DEF; gtm_step_DEF] THENC
+    transition_table_CONV THENC LAND_CONV let_CONV THENC
+    REWRITE_CONV[]) `gtm_step transition_table halted = halted`));;
+
 (* naming TM states
 
    we don't want to name every state, partly for performance but mostly because
@@ -1121,6 +1126,10 @@ let CPAIR = prove(`!p. CFST p <> CSND p = p`,
   INDUCT_TAC THEN SIMP_TAC[CPAIR_REC; CFSTSND] THEN POP_ASSUM MP_TAC THEN
   STRUCT_CASES_TAC (SPEC `CSND p` num_CASES) THEN SIMP_TAC[CPAIR_REC]);;
 
+let CPAIR_INDUCT2 = prove(`!P. (!x y. P (x <> y)) ==> !p. P p`,
+  REPEAT STRIP_TAC THEN POP_ASSUM (MP_TAC o SPECL[`CFST p`; `CSND p`]) THEN
+  SIMP_TAC[CPAIR]);;
+
 (* simplification
 
    simplifycf simplifies control flow by combining adjacent edges: operations
@@ -1466,6 +1475,8 @@ let TMEVC_ABS = prove(
 
 let TMEVC_ABSL = prove(`UNIONS A -->_c B <=> !a. a IN A ==> a -->_c B`,
   REWRITE_TAC[TMEVC_DEF; FORALL_IN_UNIONS] THEN MESON_TAC[]);;
+let TMEVC_UNL = prove(`A UNION B -->_c C <=> A -->_c C /\ B -->_c C`,
+  REWRITE_TAC[TMEVC_DEF; IN_UNION] THEN MESON_TAC[]);;
 
 let LSTATE_LIFT = prove(
  `(!ot2 oaxc op1 op2 op3. RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
@@ -1497,8 +1508,8 @@ let LSTATE_LOOP_THMS =
   let do_axc t =
     if not(vfree_in `axc:num` (concl t)) then [t] else
     let sucify n = funpow n (fun tm -> mk_comb(`SUC`,tm)) in
-    INST[sucify 18 `axcp:num`,`axc:num`] t ::
-    map (fun axc -> INST[sucify axc `0`,`axc:num`] t) (0 -- 17) in
+    map (fun axc -> INST[sucify axc `0`,`axc:num`] t) (0 -- 17) @
+    [INST[sucify 18 `axcp:num`,`axc:num`] t] in
   let do_mp t =
     let [_; _; _; _; _; _; p1; p2; p3; _; _; _] =
       dest_list (rand (rand (concl t))) in
@@ -1600,10 +1611,6 @@ let encode_wffstack = define
  `encode_wffstack [] = 0 /\
   encode_wffstack (w::ws) = encode_wff w <> encode_wffstack ws`;;
 
-let CPAIR_INDUCT = prove(`!P. (!x y. P (x <> y)) ==> !p. P p`,
-  REPEAT STRIP_TAC THEN POP_ASSUM (MP_TAC o SPECL[`CFST p`; `CSND p`]) THEN
-  SIMP_TAC[CPAIR]);;
-
 let cconcl = concl o UNDISCH_ALL;;
 
 let PUSH0 = prove(`0 <> encode_wffstack l = encode_wffstack (0 =: 0 :: l)`,
@@ -1615,9 +1622,9 @@ let encode_wff_11 = prove(`!ph ps. encode_wff ph = encode_wff ps <=> ph = ps`,
   REPEAT STRIP_TAC THEN ASM_SIMP_TAC[ENCODE_WFF; CPAIR_EQ;
     injectivity "wff"; distinctness "wff"; EQ_ADD_LCANCEL] THEN
   CONV_TAC NUM_REDUCE_CONV THEN TRY ARITH_TAC THEN
-  SPEC_TAC(`a:num`,`a:num`) THEN MATCH_MP_TAC CPAIR_INDUCT THEN
+  SPEC_TAC(`a:num`,`a:num`) THEN MATCH_MP_TAC CPAIR_INDUCT2 THEN
   REPEAT STRIP_TAC THEN
-  SPEC_TAC(`a':num`,`a':num`) THEN MATCH_MP_TAC CPAIR_INDUCT THEN
+  SPEC_TAC(`a':num`,`a':num`) THEN MATCH_MP_TAC CPAIR_INDUCT2 THEN
   REPEAT STRIP_TAC THEN SIMP_TAC[CFSTSNDP; CPAIR_EQ]);;
 
 let wffeq1 = prove(`encode_wff pp = 1 <=> pp = 0 @: 0`,
@@ -1632,7 +1639,7 @@ let WSTATE_LOOP_THMS =
       tail (rand (lhand (cconcl t))) in
     if not (is_var (lhand ttail)) then t else
     if mem (lhand ttail) (freesl (hyp (UNDISCH_ALL t))) then t else
-    prune_ws (DISCH_ALL (SPEC_ALL (MATCH_MP CPAIR_INDUCT
+    prune_ws (DISCH_ALL (SPEC_ALL (MATCH_MP CPAIR_INDUCT2
       (GENL [lhand ttail;rand ttail] (UNDISCH_ALL t))))) in
   let decode t =
     let sps = lhand (rator (lhand (cconcl t))) in
@@ -1813,6 +1820,162 @@ let wNOT1 = MATCH_MP (MATCH_MP (DRULE[wMTO; wCBVA `1` `0` `1 @: 1`; wMTO;
   axMP; axB4; axGEN; wNNOT; wNOT1A]) (ARITH_RULE `~(1 = 0)`))
   (ARITH_RULE `~(0 = 1)`);;
 let wEXP1 = DRULE[axMP; axMP; axB3; axGEN; wASM `0 @: 0`; wNOT1];;
+
+(* machine soundness *)
+
+let NOWFFSTATE = define`NWS pl np = {halted | provable (0 @: 0)} UNION
+  UNIONS {LS pl np (encode_wffstack ws) | ws | ALL provable ws}`;;
+
+let NWS_ABSNH_R = prove(
+ `(pred ==> A -->_c LS pl np (encode_wffstack ws)) ==>
+  pred /\ ALL provable ws ==> A -->_c NWS pl np`,
+  BOOL_CASES_TAC `pred:bool` THEN SIMP_TAC[] THEN
+  REWRITE_TAC[TMEVC_DEF; NOWFFSTATE; IN_UNION; IN_UNIONS; IN_ELIM_THM] THEN
+  MESON_TAC[]);;
+
+let NWS_ABSH_R = prove(
+ `(pred ==> A -->_c {halted}) ==>
+  pred /\ provable (0 @: 0) ==> A -->_c NWS pl np`,
+  BOOL_CASES_TAC `pred:bool` THEN SIMP_TAC[] THEN REWRITE_TAC[TMEVC_DEF;
+    NOWFFSTATE; IN_UNION; IN_UNIONS; IN_ELIM_THM; IN_SING] THEN
+  MESON_TAC[]);;
+
+let ASC_THM = TAUT `(p ==> r) /\ (q ==> r) ==> (p \/ q) ==> r`;;
+let rec ADJ_SAME_CONCL ts = match ts with (t1::t2::trest) ->
+    let t12 = try Some (UNIFY_MP ASC_THM (CONJ t1 t2))
+    with Failure _ -> None in
+    (match t12 with Some tt -> ADJ_SAME_CONCL (tt::trest)
+                  | None -> t1::ADJ_SAME_CONCL (t2::trest))
+  | _ -> ts ;;
+
+(* how exactly does this work? *)
+let ss_with_and = ss_of_congs [TAUT `(p <=> p') ==> (p' ==> (q <=> q')) ==> (p /\ q <=> p' /\ q')`] (basic_ss []);;
+
+let NWSB6A = prove(
+ `(~(p1 = p3) /\ ~(p2 = p3)) /\ provable (axB6a p1 p2 p3) /\ ALL provable wstk
+   \/ (p1 = p3 \/ p2 = p3) /\ ALL provable wstk <=> ALL provable wstk`,
+  CONV_TAC (SIMPLIFY_CONV ss_with_and[GSYM DE_MORGAN_THM; provable]) THEN
+  BOOL_CASES_TAC `p1:num = p3 \/ p2 = p3` THEN SIMP_TAC[]);;
+
+let NWSMP = prove(
+ `(((tw ==>: pp1 = ws1 /\ ~(pp1 = 0 @: 0)) /\ provable pp1 /\
+  ALL provable wstk \/ (tw ==>: pp1 = ws1 /\ pp1 = 0 @: 0) /\
+  provable (0 @: 0)) \/ ~(tw ==>: pp1 = ws1) /\ ALL provable wstk ==> R)
+  ==> ALL provable (tw::ws1::wstk) ==> R`,
+  ASM_CASES_TAC `tw ==>: pp1 = ws1` THEN ASM_SIMP_TAC[ALL] THEN
+  POP_ASSUM (SUBST1_TAC o SYM) THEN ASM_CASES_TAC `pp1 = 0 @: 0` THEN
+  ASM_SIMP_TAC[] THEN DISCH_TAC THEN ASM IMP_REWRITE_TAC[] THEN
+  BOOL_CASES_TAC `ALL provable wstk` THEN ONCE_REWRITE_TAC[CONJ_SYM] THEN
+  SIMP_TAC[] THEN MATCH_ACCEPT_TAC (CONJUNCT1 provable));;
+
+let NWSGEN = prove(`(provable (!: p1 tw) /\ ALL provable wstk ==> R) ==>
+  ALL provable (tw::wstk) ==> R`,
+  DISCH_TAC THEN ASM IMP_REWRITE_TAC[ALL] THEN
+  IMP_REWRITE_TAC[el 1 (CONJUNCTS provable)]);;
+
+let CPAIR_LE = prove(`!x y. x <= x <> y /\ y <= x <> y`,
+  MATCH_MP_TAC CPAIR_INDUCT THEN SIMP_TAC[CPAIR_REC; LE_SUC; LE_0] THEN
+  ARITH_TAC);;
+let CFSTSND_LE = prove(`!p. CFST p <= p /\ CSND p <= p`,
+  MATCH_MP_TAC CPAIR_INDUCT2 THEN REWRITE_TAC[CFSTSNDP; CPAIR_LE]);;
+
+let CFST_LT = prove(`CFST p < p <=> ~(p = 0)`,
+  STRUCT_CASES_TAC (SPEC `p:num` num_CASES) THEN
+  REWRITE_TAC[CFSTSND0; NOT_SUC; LT_REFL] THEN
+  SPEC_TAC(`n:num`,`n:num`) THEN INDUCT_TAC THEN
+  CONV_TAC (ONCE_REWRITE_CONV[CFSTSND]) THENL [
+    REWRITE_TAC[CFSTSND; LT_0];
+    STRUCT_CASES_TAC (SPEC `CSND (SUC n)` num_CASES) THEN
+    ASM_REWRITE_TAC[LT_SUC; LT_0]]);;
+
+let CFST2_LT = prove(`(CFST (CFST p) < p <=> ~(p = 0)) /\
+    (CSND (CFST p) < p <=> ~(p = 0))`,
+  ASM_CASES_TAC `p = 0` THEN ASM_SIMP_TAC[CFSTSND0; LT_REFL] THEN CONJ_TAC THEN
+  TRANS_TAC LET_TRANS `CFST p` THEN ASM_SIMP_TAC[CFSTSND_LE; CFST_LT]);;
+
+let DECODE_WFF =
+  let rf = pure_prove_recursive_function_exists
+   `?decode_wff. !i. decode_wff i =
+      if CSND i = 0 then CFST (CFST i) =: CSND (CFST i) else
+      if CSND i = 1 then CFST (CFST i) @: CSND (CFST i) else
+      if CSND i = 2 then decode_wff (CFST (CFST i)) ==>:
+        decode_wff (CSND (CFST i)) else
+      if CSND i = 3 then ~: (decode_wff (CFST i)) else
+      if CSND i = 4 then !: (CFST (CFST i)) (decode_wff (CSND (CFST i)))
+      else ATOM (CFST i <> CSND i - 5)` in
+  new_specification ["decode_wff"] (PROVE_HYP (prove(hd(hyp rf),
+    EXISTS_TAC `<` THEN SIMP_TAC[CFST_LT; CFST2_LT; WF_num] THEN
+    REPEAT CONJ_TAC THEN GEN_TAC THEN ASM_CASES_TAC `i = 0` THEN
+    ASM_SIMP_TAC[CFSTSND0])) rf);;
+
+let ENCODE_DECODE_WFF = prove(`!i. encode_wff (decode_wff i) = i`,
+  MATCH_MP_TAC num_WF THEN REPEAT STRIP_TAC THEN
+  CONV_TAC (ONCE_REWRITE_CONV[DECODE_WFF]) THEN
+  REPEAT COND_CASES_TAC THEN REWRITE_TAC[ENCODE_WFF] THEN
+  TRY (POP_ASSUM (SUBST1_TAC o SYM)) THEN
+  TRY (ASM IMP_REWRITE_TAC[CPAIR; CFST_LT; CFST2_LT]) THEN
+  TRY (STRIP_TAC THEN POP_ASSUM SUBST_ALL_TAC THEN
+    REPEAT (POP_ASSUM MP_TAC) THEN REWRITE_TAC[CFSTSND0]) THEN
+  IMP_REWRITE_TAC[CFSTSNDP; CPAIR; ARITH_RULE `5 <= x ==> 5 + x - 5 = x`] THEN
+  ASM_ARITH_TAC);;
+
+let WFFRESTACK = prove(
+ `!ws. ?w ws'. encode_wffstack ws = encode_wffstack (w::ws') /\
+    ALL provable ws = ALL provable (w::ws')`,
+  LIST_INDUCT_TAC THENL [
+    EXISTS_TAC `0 =: 0` THEN EXISTS_TAC `[]:wff list`;
+    EXISTS_TAC `h:wff` THEN EXISTS_TAC `t:wff list`] THEN
+  REWRITE_TAC[encode_wffstack; ALL; wEQRF; ENCODE_WFF; CPAIR_REC]);;
+
+ (* ugly, but until we have more examples of {halted} handling *)
+let NWS_ABS_L = prove(
+ `(!x y ws. ALL provable (x::y::ws) ==>
+    LS pl np (encode_wffstack (x::y::ws)) -->_c NWS pl' np') ==>
+  NWS pl np -->_c NWS pl' np'`,
+  STRIP_TAC THEN REWRITE_TAC[NOWFFSTATE; TMEVC_UNL] THEN
+  CONJ_TAC THENL [
+    REWRITE_TAC[TMEVC_DEF; IN_ELIM_THM] THEN CONV_TAC FORALL_UNWIND_CONV THEN
+    STRIP_TAC THEN EXISTS_TAC `halted` THEN
+    ASM_SIMP_TAC[IN_UNION; IN_ELIM_THM; HALTED_STICKY];
+
+    REWRITE_TAC[TMEVC_ABSL; GSYM NOWFFSTATE; IN_ELIM_THM] THEN
+    REPEAT STRIP_TAC THEN ASM_SIMP_TAC[] THEN
+    STRIP_ASSUME_TAC (SPEC `ws:wff list` WFFRESTACK) THEN
+    STRIP_ASSUME_TAC (SPEC `ws':wff list` WFFRESTACK) THEN
+    FIRST_X_ASSUM (MP_TAC o SPECL [`w:wff`;`w':wff`;`ws'':wff list`]) THEN
+    REPEAT (POP_ASSUM MP_TAC) THEN SIMP_TAC[ALL; encode_wffstack]]);;
+
+let IMPORT = TAUT `(p ==> q ==> r) ==> (p /\ q) ==> r`;; (* IMP_CONJ IMP_IMP *)
+let TRY_MATCH_MP maj min = try MATCH_MP maj min with Failure _ -> min ;;
+let TRY_UNIFY_MP maj min = try UNIFY_MP maj min with Failure _ -> min ;;
+let ALL_AXCODES_CONV =
+  let thm = ARITH_RULE `x = x - (n+1) + (n+1) \/ x = n <=> x = x - n + n` in
+  fun tm ->
+    let l,r = dest_binop `\/` tm in
+    CONV_RULE NUM_REDUCE_CONV
+      (INST[lhs r,`x:num`;rhs r,`n:num`] thm);;
+    
+let [NWSTATE_LOOP_0; NWSTATE_LOOP_NEXT; NWSTATE_LOOP_CONT] =
+  WSTATE_LOOP_THMS
+  |> map (TRY_MATCH_MP IMPORT)
+  |> map (fun t -> if is_imp (concl t) then t else DISCH `T` t)
+  |> map (TRY_UNIFY_MP NWS_ABSNH_R)
+  |> map (TRY_UNIFY_MP NWS_ABSH_R)
+  |> ADJ_SAME_CONCL
+  |> map (CONV_RULE (REWRITE_CONV [provable; ALL; wEQRF; NWSB6A]))
+  |> map (TRY_UNIFY_MP NWSMP)
+  |> map (TRY_UNIFY_MP NWSGEN)
+  |> map (TRY_UNIFY_MP NWS_ABS_L)
+  |> map (INST[`decode_wff p1`,`pp1:wff`;`decode_wff p2`,`pp2:wff`;
+               `decode_wff p3`,`pp3:wff`;`axc - 18`,`axcp:num`])
+  |> map (CONV_RULE (REWRITE_CONV [ENCODE_DECODE_WFF]))
+  |> map (fun t -> try DISCH_ALL (CONV_RULE (REWRITE_CONV
+       [SYM(AP_TERM `<>` (ASSUME(mk_eq(`axc:num`, lhand
+         (find_term (is_binop `<>`) (concl t))))))]) t)
+       with Failure _ -> t)
+  |> map (CONV_RULE (DEPTH_CONV ALL_AXCODES_CONV)) o ADJ_SAME_CONCL o rev
+  |> map (CONV_RULE (REWRITE_CONV [SUB; ADD_CLAUSES]))
+  ;;
 
 (*
 
