@@ -1484,6 +1484,7 @@ let LSTATE_LIFTH = prove(
   REWRITE_TAC[IN_ELIM_THM; CFSTSNDP] THEN ASM_MESON_TAC[]);;
 
 let LSTATE_LOOP_THMS =
+  print_string "This step may take over a minute\n";
   let lines = force_inline LINES_OF_SUB_SIMP (LINES_OF_SUB_SIMP (448,0)) |>
     map unsub_line in
   let dlines = filter (fun l -> addr_of_line l <> entry_pc_tm) lines in
@@ -1554,30 +1555,30 @@ let ENCODE_WFF = define
   encode_wff (!: x p) = (x <> encode_wff p) <> 4 /\
   encode_wff (ATOM n) = CFST n <> (5 + CSND n)`;;
 
-let AXIOMS = end_itlist CONJ [
-  define`?: x p = ~: (!: x (~: p))`;
-  define`p /\: q = ~: (p ==>: ~: q)`;
-  define`p <=>: q = (p ==>: q) /\: (q ==>: p)`;
+let AXIOMS = end_itlist CONJ (map (define o parse_term) [
+  `?: x p = ~: (!: x (~: p)):`;
+  `p /\: q = ~: (p ==>: ~: q):`;
+  `p <=>: q = (p ==>: q) /\: (q ==>: p):`;
 
-  define`axB1 ph ps ch = (ph ==>: ps) ==>: (ps ==>: ch) ==>: ph ==>: ch`;
-  define`axB2 ph = (~: ph ==>: ph) ==>: ph`;
-  define`axB3 ph ps = ph ==>: ~: ph ==>: ps`;
-  define`axB4 x ph ps = !: x (ph ==>: ps) ==>: !: x ph ==>: !: x ps`;
-  define`axB6a x y z = (x =: y ==>: !: z (x =: y)) /\:
-    (x @: y ==>: !: z (x @: y))`;
-  define`axB6b x y ph = !: x (!: y ph) ==>: !: y (!: x ph)`;
-  define`axB6c x ph = ?: x (!: x ph) ==>: ph`;
-  define`axB7 x y = ?: x (x =: y)`;
-  define`axB8a x y z = x =: y ==>: x =: z ==>: y =: z`;
-  define`axB8b x y z = x =: y ==>: x @: z ==>: y @: z`;
-  define`axB8c x y z = x =: y ==>: z @: x ==>: z @: y`;
-  define`axEXT = !: 2 (2 @: 0 <=>: 2 @: 1) ==>: 0 =: 1`;
-  define`axREP ph = !: 3 (?: 1 (!: 2 (!: 1 ph ==>: 2 =: 1))) ==>:
-    ?: 1 (!: 2 (2 @: 1 <=>: ?: 3 (3 @: 0 /\: !: 1 ph)))`;
-  define`axPOW = ?: 1 (!: 2 (!: 3 (3 @: 2 ==>: 3 @: 0) ==>: 2 @: 1))`;
-  define`axUNI = ?: 1 (!: 2 (?: 3 (2 @: 3 /\: 3 @: 0) ==>: 2 @: 1))`;
-  define`axINF = ?: 1 ((0 @: 1) /\: !: 0 (0 @: 1 ==>:
-    ?: 2 ((2 @: 1) /\: !: 1 (1 @: 2 <=>: 1 =: 0))))`];;
+  `axB1 ph ps ch = (ph ==>: ps) ==>: (ps ==>: ch) ==>: ph ==>: ch:`;
+  `axB2 ph = (~: ph ==>: ph) ==>: ph:`;
+  `axB3 ph ps = ph ==>: ~: ph ==>: ps:`;
+  `axB4 x ph ps = !: x (ph ==>: ps) ==>: !: x ph ==>: !: x ps:`;
+  `axB6a x y z = (x =: y ==>: !: z (x =: y)) /\:
+    (x @: y ==>: !: z (x @: y)):`;
+  `axB6b x y ph = !: x (!: y ph) ==>: !: y (!: x ph):`;
+  `axB6c x ph = ?: x (!: x ph) ==>: ph:`;
+  `axB7 x y = ?: x (x =: y):`;
+  `axB8a x y z = x =: y ==>: x =: z ==>: y =: z:`;
+  `axB8b x y z = x =: y ==>: x @: z ==>: y @: z:`;
+  `axB8c x y z = x =: y ==>: z @: x ==>: z @: y:`;
+  `axEXT = !: 2 (2 @: 0 <=>: 2 @: 1) ==>: 0 =: 1:`;
+  `axREP ph = !: 3 (?: 1 (!: 2 (!: 1 ph ==>: 2 =: 1))) ==>:
+     ?: 1 (!: 2 (2 @: 1 <=>: ?: 3 (3 @: 0 /\: !: 1 ph))):`;
+  `axPOW = ?: 1 (!: 2 (!: 3 (3 @: 2 ==>: 3 @: 0) ==>: 2 @: 1)):`;
+  `axUNI = ?: 1 (!: 2 (?: 3 (2 @: 3 /\: 3 @: 0) ==>: 2 @: 1)):`;
+  `axINF = ?: 1 ((0 @: 1) /\: !: 0 (0 @: 1 ==>:
+    ?: 2 ((2 @: 1) /\: !: 1 (1 @: 2 <=>: 1 =: 0)))):`]);;
 
 let provable, provable_INDUCT, provable_CASES = new_inductive_definition
  `(!ph ps. provable (ph ==>: ps) /\ provable ph ==> provable ps) /\
@@ -1646,6 +1647,97 @@ let WSTATE_LOOP_THMS =
   LSTATE_LOOP_THMS |> map prune_ws |> map decode |>
   map (CONV_RULE (REWRITE_CONV[GSYM ENCODE_WFF; GSYM AXIOMS;
     SYM (CONJUNCT2 encode_wffstack); PUSH0; encode_wff_11; wffeq1]));;
+
+(* propositional completeness *)
+
+let [axMPa; axGEN; axB1; axB2; axB3; axB4; axB6a; axB6b; axB6c; axB7; axB8a;
+  axB8b; axB8c; axEXT; axREP; axPOW; axUNI; axINF] = CONJUNCTS provable;;
+let axMP = MATCH_MP (TAUT `(p/\q==>r)==>p==>q==>r`) (SPEC_ALL axMPa);;
+
+let UNIFY_MP maj min =
+  let smaj = SPEC_ALL maj and smin = SPEC_ALL min in
+  let avoiding tref t =
+    let renable = subtract (frees (concl t)) (freesl (hyp t)) in
+    let renamed = variants (thm_frees tref) renable in
+    INST (zip renamed renable) t in
+  let rmaj = avoiding smin smaj in
+  let rmin = avoiding rmaj smin in
+  let majb,majt = strip_forall (lhand (concl rmaj)) in
+  let rbmap = zip majb (variants
+    (union (thm_frees rmaj) (thm_frees rmin)) majb) in
+  let rmajb = map (subst rbmap) majb in
+  let rmajt = subst rbmap majt in
+  let (_,tmin,tyin) = term_type_unify rmajt (concl rmin) ([],[],[]) in
+  let imag = INST tmin (INST_TYPE tyin rmaj) in
+  let imin = INST tmin (INST_TYPE tyin rmin) in
+  let gimin = GENL (map (vsubst tmin o inst tyin) rmajb) imin in
+  MP imag gimin ;;
+
+let DRULE ps =
+  let rec apply p stk = if is_imp (concl (SPEC_ALL p)) then
+    apply (UNIFY_MP p (hd stk)) (tl stk) else p::stk in
+  match (itlist apply (map (CONV_RULE (REWRITE_CONV [AXIOMS])) ps) [])
+    with [t] -> DISCH_ALL t | _ -> failwith "bad stack" ;;
+
+let wASM t = ASSUME (mk_comb(`provable`,t));;
+let wLUK1 = DRULE [axMP; axMP; axB1; wASM `c ==>: b`; wASM `b ==>: a`];;
+let wLUK2 = DRULE [wLUK1; wLUK1; axB1; axMP; axB1; axB3; axB1];;
+let wLUK3 = DRULE [wLUK1; axB3; wLUK2];;
+let wLUK4 = DRULE [wLUK1; axMP; axB1; axMP; axMP; wLUK3; axB2; axB2; axB2];;
+let wKCOM = DRULE [wLUK1; wLUK3; wLUK4];;
+let wWCOM = DRULE [wLUK1; axB1; axMP; wLUK4; axMP; axB1; axMP; axB1;
+  wLUK1; wKCOM; wLUK1; wLUK2; wLUK4];;
+let wCCOM = DRULE [wLUK1; axB1; axMP; axB1; wLUK1; wLUK1; wKCOM; axB1; wWCOM];;
+let wBCOM = DRULE [axMP; wCCOM; axB1];;
+let wSCOM = DRULE [wLUK1; wCCOM; wLUK1; wBCOM; axMP; wBCOM; wWCOM];;
+let wCON4 = DRULE [wLUK1; wLUK2; wLUK4];;
+let wNNTR = DRULE [axMP; wWCOM; wLUK1; axMP; wCCOM; axB3; wCON4];;
+let wCON2 = DRULE [wLUK1; axMP; axB1; wNNTR; wCON4];;
+let wID   = DRULE [wLUK1; axB3; axB2];;
+let wNNOT = DRULE [axMP; wCON2; wID];;
+let wCON3 = DRULE [wLUK1; axMP; wBCOM; wNNOT; wCON4];;
+let wCON1 = DRULE [wLUK1; axMP; axB1; wNNTR; wCON3];;
+let wCASE = DRULE [axMP; axB2; wLUK1; axMP; wCON3; wASM`w:wff`; wASM`w:wff`];;
+
+let wTAUT =
+  let lift0 = UNIFY_MP axMP wKCOM in
+  let lift1 = UNIFY_MP axMP wBCOM in
+  let lift2 = DRULE [axMP; axMP; wBCOM; wSCOM; axMP; wBCOM; wASM `w:wff`] in
+  let liftK = DRULE [axMP; axMP; wBCOM; wKCOM; wASM `w:wff`] in
+  let baseIM1 = DRULE [axMP; wCCOM; axB3] in
+  let baseIM3 = DRULE [wLUK1; axMP; wCCOM; wID; wCON1] in
+  fun fm ->
+  let exp = PURE_REWRITE_CONV [AXIOMS] (mk_comb(`provable`,fm)) in
+  let expfm = rand (rhs (concl exp)) in
+  let rec atoms subtm =
+    try let x,y = dest_binop `==>: ` subtm in union (atoms x) (atoms y)
+    with Failure _ -> if is_comb subtm && rator subtm = `~: `
+      then atoms (rand subtm) else [subtm] in
+  let allat = atoms expfm in
+  let rec prove subtm (atv,im1,im2,im3,n1,_) as cx =
+    if is_binop `==>: ` subtm then
+      let nl,pl = prove (lhand subtm) cx in
+      let nr,pr = prove (rand subtm) cx in
+      if nl then false,UNIFY_MP (UNIFY_MP axMP im1) pl else
+      if not nr then false,UNIFY_MP (UNIFY_MP axMP im2) pr else
+      true,UNIFY_MP (UNIFY_MP axMP (UNIFY_MP (UNIFY_MP axMP im3) pl)) pr else
+    if is_comb subtm && rator subtm = `~: ` then
+      let n,p = prove (rand subtm) cx in
+      if n then false,p else true,UNIFY_MP (UNIFY_MP axMP n1) p else
+    rev_assoc subtm atv in
+  let rec analyze atoms (atv,im1,im2,im3,n1,k) as cx = match atoms with
+      [] -> let n,prf = prove expfm cx in
+            if n then failwith "not a tautology" else prf
+    | (a::ats) ->
+      let im1' = UNIFY_MP lift1 im1 in let im2' = UNIFY_MP lift1 im2 in
+      let im3' = UNIFY_MP lift2 im3 in let n1' = UNIFY_MP lift1 n1 in
+      let atv' = map (fun (n,t),a -> (n,UNIFY_MP lift0 t),a) atv in
+      let k' = UNIFY_MP liftK k in
+      let ptrue = analyze ats (((false,k),a)::atv',im1',im2',im3',n1',k') in
+      let pfals = analyze ats (((true,k),a)::atv',im1',im2',im3',n1',k') in
+      UNIFY_MP (UNIFY_MP wCASE pfals) ptrue in
+  let gprf = analyze allat ([],baseIM1,wKCOM,baseIM3,wNNOT,wID) in
+  EQ_MP (SYM exp) (INST (zip allat (atoms (rand (concl gprf)))) gprf) ;;
 
 (*
 
