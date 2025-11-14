@@ -1675,7 +1675,10 @@ let UNIFY_MP maj min =
 
 let DRULE ps =
   let rec apply p stk = if is_imp (concl (SPEC_ALL p)) then
-    apply (UNIFY_MP p (hd stk)) (tl stk) else p::stk in
+    let lh = lhand (concl (SPEC_ALL p)) in
+    if is_comb lh && rator lh = `provable` then
+    apply (UNIFY_MP p (hd stk)) (tl stk) else
+    apply (UNIFY_MP p (ASSUME `p:bool`)) stk else p::stk in
   match (itlist apply (map (CONV_RULE (REWRITE_CONV [AXIOMS])) ps) [])
     with [t] -> DISCH_ALL t | _ -> failwith "bad stack" ;;
 
@@ -1737,7 +1740,79 @@ let wTAUT =
       let pfals = analyze ats (((true,k),a)::atv',im1',im2',im3',n1',k') in
       UNIFY_MP (UNIFY_MP wCASE pfals) ptrue in
   let gprf = analyze allat ([],baseIM1,wKCOM,baseIM3,wNNOT,wID) in
-  EQ_MP (SYM exp) (INST (zip allat (atoms (rand (concl gprf)))) gprf) ;;
+  let cprf = UNIFY_MP (DISCH_ALL (ASSUME (rhs (concl exp)))) gprf in
+  EQ_MP (SYM exp) (INST (zip allat (atoms (rand (concl cprf)))) cprf) ;;
+
+(* predicate "completeness" *)
+
+let wEXIM = DRULE [wLUK1; axMP; axB4; axGEN; wCON1; wLUK1; axB4; wCON1];;
+let wSIMPL = wTAUT `p /\: q ==>: p`;;
+let wSIMPR = wTAUT `p /\: q ==>: q`;;
+
+let rec axB6 tm =
+  if is_binop `=: ` tm then
+  DRULE[axMP; wSIMPL; axB6a] else
+  if is_binop `@: ` tm then
+  DRULE[axMP; wSIMPR; axB6a] else
+  if is_binop `==>: ` tm then
+  DRULE[axMP; axMP; axMP; axMP;
+    wTAUT `(!: z (~: x) ==>: !: z (x ==>: y)) ==>:
+      (!: z y ==>: !: z (x ==>: y)) ==>: (~: x ==>: !: z (~: x)) ==>:
+      (y ==>: !: z y) ==>: (x ==>: y) ==>: !: z (x ==>: y)`;
+    axMP; axB4; axGEN; axMP; wCCOM; axB3;
+    axMP; axB4; axGEN; wKCOM;
+    axB6 (mk_comb(`~: `,lhand tm)); axB6 (rand tm)] else
+  if is_binop `!: ` tm then
+  DRULE[wLUK1; axMP; axB4; axGEN; axB6 (rand tm); axB6b] else
+  if is_comb tm && rator tm = `~: ` then
+  DRULE[axMP; wCON3; wLUK1; axMP; wEXIM; axGEN; axB6 (rand tm); axB6c] else
+  failwith "defined / p-atom / non-ground in axB6" ;;
+
+let axB6e tm = DRULE[axMP; wCON3; axB6 (mk_comb(`~: `,tm))];;
+let wEQRF = UNIFY_MP (DRULE[axMP; axMP; wCON3; axB6 `~: (y =: y)`; axMP;
+  axMP; wEXIM; axGEN; axMP; wWCOM; axB8a; axB7])
+  (ARITH_RULE `~(x = SUC x) /\ ~(x = SUC x)`);;
+let wEQSM = DRULE[axMP; axMP; wCCOM; axB8a; wEQRF];;
+let wB8a2 = DRULE[axMP; axMP; wBCOM; axMP; wBCOM; wEQSM; axMP; axMP; wBCOM;
+  axMP; axMP; wCCOM; wBCOM; wEQSM; axB8a];;
+
+let wGENE = DRULE[axMP; axMP; wEXIM; axGEN; axMP; wKCOM; wASM `w:wff`; axB7];;
+let wMTO = DRULE[axMP; axMP; wCON1; wASM `w:wff`; wASM `w:wff`];;
+
+let wNUL1 = DRULE[axGEN; wGENE; axGEN; axMP; axMP; wCCOM; axB3; axB7];;
+let wNUL2 = DRULE[axMP; wTAUT `~: ps ==>: (ph <=>: ps) ==>: ~: ph`;
+  wMTO; axMP; wEXIM; axGEN; wSIMPR; wMTO; axB6e `!: 1 (~: (1 =: 1))`; axB7]
+let wNUL = MATCH_MP (DRULE[axMP; axMP; wEXIM; axGEN; axMP; axB4; axGEN;
+  wNUL2; axMP; axREP; wNUL1]) (ARITH_RULE `~(1 = 3) /\ ~(1 = 3)`);;
+
+let wB321 = wTAUT `(c==>:a)==>:(b==>:d)==>:(a==>:b)==>:(c==>:d)`;;
+let wSYLK = wTAUT `(a==>:b==>:c)==>:(a==>:c==>:d)==>:a==>:b==>:d`;;
+let wIDK = wTAUT `a==>:b==>:b`;;
+let rec wINST v tm =
+  if is_binop `!: ` tm then
+  DRULE[wLUK1; axB6 `x =: y`; axMP; axB4; axGEN; wINST v (rand tm)] else
+  if is_binop `==>: ` tm then
+  DRULE[axMP; axMP; wB321; wINST v (lhand tm); wINST v (rand tm)] else
+  if is_binop `=: ` tm then
+  DRULE[axMP; axMP; wSYLK; if lhand tm = v then axB8a else wIDK;
+    if rand tm = v then wB8a2 else wIDK] else
+  if is_binop `@: ` tm then
+  DRULE[axMP; axMP; wSYLK; if lhand tm = v then axB8b else wIDK;
+    if rand tm = v then axB8c else wIDK] else
+  if is_comb tm && rator tm = `~: ` then
+  DRULE[wLUK1; wLUK1; wEQSM; wINST v (rand tm); wCON1] else
+  failwith "p-atom or non-ground in wINST";;
+
+let wSPEC v tm = DRULE[wLUK1; axMP; axB4; axGEN; axMP; wCCOM; wINST v tm;
+  wLUK1; axMP; axMP; wCCOM; wEXIM; axB7; axB6e tm];;
+let wCBVA v w tm = DRULE[wLUK1; axB6 (mk_comb(mk_comb(`!: `,w),tm));
+  axMP; axB4; axGEN; wSPEC v tm];;
+let wNOT1A = MATCH_MP (DRULE[axMP; axMP; wEXIM; axGEN;
+  wSPEC `2` `~: (2 @: 1)`; wNUL]) (ARITH_RULE `~(1 = 2) /\ ~(1 = 2)`);;
+let wNOT1 = MATCH_MP (MATCH_MP (DRULE[wMTO; wCBVA `1` `0` `1 @: 1`; wMTO;
+  axMP; axB4; axGEN; wNNOT; wNOT1A]) (ARITH_RULE `~(1 = 0)`))
+  (ARITH_RULE `~(0 = 1)`);;
+let wEXP1 = DRULE[axMP; axMP; axB3; axGEN; wASM `0 @: 0`; wNOT1];;
 
 (*
 
