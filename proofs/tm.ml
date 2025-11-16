@@ -4,7 +4,7 @@
    custom tactics, simpsets, user parsers/printers
 
    parsing: , ; brackets are special
-   
+
    study drule/impconv more *)
 
 (* subst a large term into the body of an abs is slow since it needs to be checked for bound variables; possibly exponential nested alpha, def linear *)
@@ -38,7 +38,7 @@
      many loader things and handling scripts, irrelevant
      temporary and expression changes, handled
      added decz primitive, handled
-     various logic 
+     various logic
      misc logic changes, handleable, TODO
 
    ajwade/turing_machine_explorer/master: d3a9e07
@@ -122,10 +122,10 @@ let list_2INDUCT = prove(
    maps are typed as functions, but have a recursive representation that allows
    logarithmic time evaluation without alpha conversion. the base concept is
    similar to sptree from HOL4, but simplified for our use case
-   
+
    imprecise = few guarantees on value outside provided alist. a precise mode
    is possible but requires ~twice the term nodes
-   
+
    todo: actual definition primitive, maybe a conv-generator *)
 
 let nmap_node_DEF = define`NMAP_NODE l r = \i. (if ODD i then r else l) (i DIV 2):A` ;;
@@ -152,7 +152,7 @@ let mk_nmap_imprecise def =
       [] -> mk_binop leaf def def
     | [0,tm1] -> mk_binop leaf tm1 def
     | [_,tm1] -> mk_binop leaf def tm1
-    | [0,tm1;_,tm2] -> mk_binop leaf tm1 tm2 
+    | [0,tm1;_,tm2] -> mk_binop leaf tm1 tm2
     | [_,tm1;0,tm2] -> mk_binop leaf tm2 tm1
     | _ -> let submap m = (mk_nmap Option.(List.filter_map (fun (i,tm) -> if i mod 2 == m then some (i/2, tm) else none) pairs)) in
             mk_binop node (submap 0) (submap 1)
@@ -170,12 +170,12 @@ let mk_bmap f t = mk_binop (mk_const("BMAP",[type_of f,aty])) f t ;;
 
    we do everything concretely, but want to be able to present an existential
    theorem later "there is an <X> state TM that does <Y>"
-   
+
    head positions are implicit, we limit to a single tape and 2 symbols, states
    are num indexed (to avoid type variables in the sequel), the transition
    table takes the current state and symbol and produces the new state,
    movement direction, and new symbol.
-   
+
    being halted is considered an update and associated with state 0 for
    totality reasons, valid TMs will not leave state 0. similarly, the initial
    state is always 1 *)
@@ -230,7 +230,7 @@ let transition_table_CONV = GEN_REWRITE_CONV DEPTH_CONV [transition_table_DEF;nm
 
    the initialization process itself does not have to be modeled since it
    halts, but we need a calculation-friendly tape representation
-   
+
    this whole thing is incredibly circuitous for something that could have been
    a definition. the two-sided zipper is almost certainly the interface we want
    downstream, although the lists could be replaced with colists (wrapper
@@ -345,7 +345,7 @@ prioritize_num();;
    extend to a small-step semantics on "classes" (sets of worldstates); this
    roughly matches Hoare triples but always terminates and the operations
    performed are implicit in the states
-   
+
    reflexive small-step may be an option if we bounce between two disjoint sets
    to prove non-termination, could also be expressed by having progressing and
    non-progressing relations, a fourth option would be to extend the
@@ -377,22 +377,22 @@ let BEHAVIOR =
     CONJ (MATCH_MP tm_evolves_BASE (cv (lhand tm')))
          (MATCH_MP tm_evolves_BASE (cv (rand tm'))) ;;
 
-let HALTED_STICKY = MATCH_MP tm_evolves_BASE (EQT_ELIM
-  ((REWRITE_CONV[halted_DEF; gtm_step_DEF] THENC
+let HALTED_STICKY1 = EQT_ELIM ((REWRITE_CONV[halted_DEF; gtm_step_DEF] THENC
     transition_table_CONV THENC LAND_CONV let_CONV THENC
-    REWRITE_CONV[]) `gtm_step transition_table halted = halted`));;
+    REWRITE_CONV[]) `gtm_step transition_table halted = halted`);;
+let HALTED_STICKY = MATCH_MP tm_evolves_BASE HALTED_STICKY1;;
 
 (* naming TM states
 
    we don't want to name every state, partly for performance but mostly because
    the names are only useful in hand-written proofs. the various dispatch tree
    states will remain nameless, known only by their behavior
-   
+
    it remains to be seen how we handle variance between tm versions. there are
    only two basic versions of the register machine but some of them have
    optimizations, dec_check, dec_restore, dec_scan_done are half states, !ENTRY
    is unneeded, etc, as well as yucky issues with name collapsing
-   
+
    todo: generalize bmap-based definition mechanism
    todo: custom parse for tm states *)
 
@@ -451,7 +451,7 @@ let NAMED_BEHAVIOR_IMP =
    start by proving single steps, use induction to build the inner loops, then
    inductively construct the behavior of primitive register operations at the
    dispatch/register interface boundary
-   
+
    initial attempts to prove this used a "pseudo big step" approach where all
    states were proven to evolve to the nextstate interface; this made use of
    implicational rewriting but had poor modularity and required heavy use of
@@ -662,7 +662,7 @@ let (OPER_INCR_THMS, OPER_DECR_0_THMS, OPER_DECR_SUC_THMS) =
    at higher levels is problematic, but we cannot identify them with either an
    entry or exit state. instead, higher levels use dispatch-root states, which
    are reliably hit before every operation or jump
-   
+
    here we prove that from the dispatch-root we can reach an operation state if
    there is one, or go to another dispatch-root if there was a jump, and that
    operation returns can reach the dispatch root. it is mostly just expanding
@@ -1072,6 +1072,10 @@ let TMEVC_LIFT1 = prove(
  `(!l c. DISPSTATE l pc (OPSEG rs c) -->_w
    DISPSTATE l pc' (OPSEG rs' (J c))) ==> RS pc rs -->_c RS pc' rs'`,
  REWRITE_TAC[REGSTATE; TMEVC_DEF; IN_ELIM_THM] THEN MESON_TAC[]);;
+let TMEVC_LIFTI = prove(
+ `initial -->_w DISPSTATE l pc (OPSEG rs c) ==> {initial} -->_c RS pc rs`,
+ REWRITE_TAC[REGSTATE; TMEVC_DEF; IN_ELIM_THM; IN_SING] THEN MESON_TAC[]);;
+let INITIAL_RS = MATCH_MP TMEVC_LIFTI INIT_REACHED;;
 let TMEVC_LIFT2 = prove(
  `(!l rr. DISPSTATE l pc rr -->_w DISPSTATE l pc' rr) ==>
   RS pc rs -->_c RS pc' rs`,
@@ -1473,6 +1477,10 @@ let TMEVC_ABS = prove(
   REWRITE_TAC[TMEVC_DEF; FORALL_IN_UNIONS; EXISTS_IN_UNIONS] THEN
   MESON_TAC[]);;
 
+let TMEVC_ABSR1 = prove(
+ `(!a. a IN A ==> (?b. b IN B /\ A -->_c b)) ==> A -->_c UNIONS B`,
+  REWRITE_TAC[TMEVC_DEF; EXISTS_IN_UNIONS] THEN MESON_TAC[]);;
+
 let TMEVC_ABSL = prove(`UNIONS A -->_c B <=> !a. a IN A ==> a -->_c B`,
   REWRITE_TAC[TMEVC_DEF; FORALL_IN_UNIONS] THEN MESON_TAC[]);;
 let TMEVC_UNL = prove(`A UNION B -->_c C <=> A -->_c C /\ B -->_c C`,
@@ -1486,6 +1494,10 @@ let LSTATE_LIFT = prove(
   LS pl np (tw <> ws) -->_c LS pl' np' (tw' <> ws')`,
   REWRITE_TAC[LSTATE] THEN DISCH_TAC THEN MATCH_MP_TAC TMEVC_ABS THEN
   REWRITE_TAC[IN_ELIM_THM; CFSTSNDP] THEN ASM_MESON_TAC[]);;
+
+let LSTATE_INIT = prove(`{initial} -->_c LS 0 0 (0 <> 0)`,
+  MP_TAC INITIAL_RS THEN REWRITE_TAC[LSTATE; TMEVC_DEF; IN_UNIONS;
+    IN_SING; IN_ELIM_THM; CFSTSNDP] THEN MESON_TAC[]);;
 
 let LSTATE_LIFTH = prove(
  `(!ot2 oaxc op1 op2 op3. RS [F;F;F;F;T;F;F;F;F;F;F;F;F;F;F;F;F]
@@ -1614,7 +1626,7 @@ let encode_wffstack = define
 let cconcl = concl o UNDISCH_ALL;;
 
 let PUSH0 = prove(`0 <> encode_wffstack l = encode_wffstack (0 =: 0 :: l)`,
-  REWRITE_TAC[encode_wffstack; ENCODE_WFF; CPAIR_REC]);; 
+  REWRITE_TAC[encode_wffstack; ENCODE_WFF; CPAIR_REC]);;
 
 let encode_wff_11 = prove(`!ph ps. encode_wff ph = encode_wff ps <=> ph = ps`,
   MATCH_MP_TAC wff_INDUCT THEN REPEAT STRIP_TAC THEN
@@ -1954,7 +1966,7 @@ let ALL_AXCODES_CONV =
     let l,r = dest_binop `\/` tm in
     CONV_RULE NUM_REDUCE_CONV
       (INST[lhs r,`x:num`;rhs r,`n:num`] thm);;
-    
+
 let [NWSTATE_LOOP_0; NWSTATE_LOOP_NEXT; NWSTATE_LOOP_CONT] =
   WSTATE_LOOP_THMS
   |> map (TRY_MATCH_MP IMPORT)
@@ -1977,10 +1989,132 @@ let [NWSTATE_LOOP_0; NWSTATE_LOOP_NEXT; NWSTATE_LOOP_CONT] =
   |> map (CONV_RULE (REWRITE_CONV [SUB; ADD_CLAUSES]))
   ;;
 
+ (* todo UNIFY_MP_EQ *)
+ (* TMEVC operations based on subsets? *)
+let NWSTATE_INIT = prove(`{initial} -->_c NWS 0 0`,
+  MATCH_MP_TAC (INST [`T`,`pred:bool`;`[]:wff list`,`ws:wff list`]
+    (CONV_RULE (REWRITE_CONV[IMP_IMP]) NWS_ABSNH_R)) THEN
+  MP_TAC INITIAL_RS THEN SIMP_TAC[ALL; encode_wffstack] THEN
+  REWRITE_TAC[TMEVC_DEF; LSTATE; CFSTSND0; EXISTS_IN_UNIONS; IN_ELIM_THM] THEN
+  MESON_TAC[]);;
+
+let CPAIR_IND4 = prove(
+ `!P. (!ax p1 p2 p3 np. P (ax <> p1 <> p2 <> p3 <> np)) ==> !p. P p`,
+  STRIP_TAC THEN STRIP_TAC THEN REPLICATE_TAC 4
+   (MATCH_MP_TAC CPAIR_INDUCT2 THEN GEN_TAC) THEN ASM_REWRITE_TAC[]);;
+
+let NWSTATE_EACH_PROOF = prove(`NWS 0 n -->_c NWS 0 (n + 1)`,
+  STRUCT_CASES_TAC (SPEC `n:num` num_CASES) THENL [
+    REWRITE_TAC[ARITH; NWSTATE_LOOP_0]; ALL_TAC] THEN
+  REWRITE_TAC[ADD1; ADD_AC] THEN CONV_TAC NUM_REDUCE_CONV THEN
+  SPEC_TAC(`n':num`,`n':num`) THEN MATCH_MP_TAC CPAIR_IND4 THEN
+  REPLICATE_TAC 4 GEN_TAC THEN INDUCT_TAC THEN
+  REWRITE_TAC[NWSTATE_LOOP_NEXT] THEN
+  IMP_REWRITE_TAC[MATCH_MP EVOLVEC_TO_IMP NWSTATE_LOOP_NEXT] THEN
+  SUBGOAL_THEN `!np pl. NWS (SUC pl) np -->_c NWS 0 np` MATCH_ACCEPT_TAC THEN
+
+  GEN_TAC THEN REWRITE_TAC[ADD1] THEN MATCH_MP_TAC num_WF THEN
+  MATCH_MP_TAC CPAIR_IND4 THEN REPLICATE_TAC 4 GEN_TAC THEN INDUCT_TAC THEN
+  DISCH_TAC THEN ASM IMP_REWRITE_TAC[NWSTATE_LOOP_CONT;
+    MATCH_MP EVOLVEC_TO_IMP NWSTATE_LOOP_CONT; ADD1] THEN
+
+  SUBGOAL_THEN `!x y z. x < z ==> (x < y <> z) = T` ASSUME_TAC THENL [
+    REPEAT STRIP_TAC THEN SIMP_TAC[] THEN TRANS_TAC LTE_TRANS `z:num` THEN
+    ASM_SIMP_TAC[CPAIR_LE]; ASM IMP_REWRITE_TAC[LT_ADD] THEN ARITH_TAC]);;
+
+let NWSTATE_ALL_PROOFS = prove(`!n. {initial} -->_c NWS 0 n`,
+  INDUCT_TAC THEN EVOLVESC_TO_IMPS_TAC' THEN
+  TRY (ASM IMP_REWRITE_TAC[]) THEN
+  REWRITE_TAC[ADD1; NWSTATE_EACH_PROOF; NWSTATE_INIT]);;
+
+ (* ugly *)
+let TMEVC_HALT = prove(
+  `{x} -->_c S /\ S -->_c S /\ x -->_w halted ==> halted IN S`,
+  REWRITE_TAC[tm_evolves; RIGHT_AND_EXISTS_THM; LEFT_IMP_EXISTS_THM] THEN
+  GEN_TAC THEN SPEC_TAC (`x:num#(int->bool)`,`x:num#(int->bool)`) THEN
+  SPEC_TAC(`n:num`,`n:num`) THEN MATCH_MP_TAC num_WF THEN
+  REWRITE_TAC[TMEVC_DEF; tm_evolves; RIGHT_AND_EXISTS_THM; IN_SING] THEN
+  CONV_TAC (DEPTH_CONV (CHANGED_CONV FORALL_UNWIND_CONV)) THEN
+  CONV_TAC (DEPTH_CONV (CHANGED_CONV UNWIND_CONV)) THEN
+  REPEAT STRIP_TAC THEN
+  DISJ_CASES_TAC (ARITH_RULE `SUC n <= SUC n' \/ n' < n`) THEN
+  POP_ASSUM MP_TAC THEN REWRITE_TAC[LE_EXISTS; LT_EXISTS] THEN
+  ONCE_REWRITE_TAC[ADD_SYM] THEN STRIP_TAC THEN POP_ASSUM SUBST_ALL_TAC THEN
+  WITH_ASSUMS (REWRITE_TAC [ITERF_ADD; ARITH_RULE `SUC(m+n)=m+SUC n`]) THENL [
+    POP_ASSUM SUBST_ALL_TAC THEN
+    SUBGOAL_THEN `ITERF d (gtm_step transition_table)
+       halted = halted` SUBST_ALL_TAC THEN
+    ASM_REWRITE_TAC[] THEN SPEC_TAC(`d:num`,`d:num`) THEN INDUCT_TAC THEN
+    ASM_REWRITE_TAC[ITERF_DEF; HALTED_STICKY1];
+
+    FIRST_X_ASSUM (MP_TAC o SPEC `d:num`) THEN ASM_SIMP_TAC[] THEN
+    ANTS_TAC THENL [ARITH_TAC; DISCH_THEN (MP_TAC o SPEC
+      `ITERF (SUC n') (gtm_step transition_table) x`)] THEN
+    ASM_MESON_TAC[]]);;
+
+let RSTATE_NOT_HALT = prove(`~(halted IN RS pc regs)`,
+  REWRITE_TAC[REGSTATE; IN_ELIM_THM; DISPSTATE; halted_DEF; PAIR_EQ] THEN
+  ARITH_TAC);;
+
+let MACHINE_SOUND = prove(`initial -->_w halted ==> provable (0 @: 0)`,
+  DISCH_TAC THEN MP_TAC (SPECL [`initial`; `UNIONS {NWS 0 i|T}`]
+    (GEN_ALL TMEVC_HALT)) THEN ASM_REWRITE_TAC[] THEN ANTS_TAC THEN
+  TRY CONJ_TAC THENL [
+    MATCH_MP_TAC TMEVC_ABSR1 THEN REWRITE_TAC[IN_ELIM_THM] THEN
+    MESON_TAC[NWSTATE_INIT];
+
+    MATCH_MP_TAC TMEVC_ABS THEN REWRITE_TAC[IN_ELIM_THM] THEN
+    MESON_TAC[NWSTATE_EACH_PROOF];
+
+    REPEAT (CONV_TAC (DEPTH_CONV (CHANGED_CONV UNWIND_CONV)) THEN
+      REWRITE_TAC[IN_UNIONS; IN_UNION; IN_ELIM_THM; NOWFFSTATE; LSTATE;
+        RSTATE_NOT_HALT; GSYM LEFT_EXISTS_AND_THM])]);;
+
+(* machine completeness *)
+
+let pick_encoding (_,w) =
+  let wff = find_term (fun tm -> type_of tm = `:wff` && not (is_var tm)) w in
+  let typ,_ = strip_comb wff in
+  let thm = find (fun c -> can (find_term (fun t -> t = typ)) c &&
+    lhand (rator (lhand c)) <> `0`) (map cconcl WSTATE_LOOP_THMS) in
+  let base = instantiate (term_type_unify (lhand (rand (rand (rand thm)))) wff
+    ([],[],[])) (lhand (rator (lhand thm))) in
+  let base = if typ = `!: ` then mk_comb(`f:num->num`,base) else base in
+  EXISTS_TAC(mk_abs(`pl:num`,base));;
+
+let PROOFS_EXIST = prove(
+ `!w. provable w ==> ?f.
+    (!pl np ws. LS (f pl) np (encode_wffstack ws) -->_c {halted}) \/
+    ~(w = 0 @: 0) /\ (!pl np ws. LS (f pl) np (encode_wffstack ws) -->_c
+       LS pl np (encode_wffstack (w::ws)))`,
+  MATCH_MP_TAC provable_INDUCT THEN REPEAT STRIP_TAC THEN
+  TRY (EXISTS_TAC `f:num->num` THEN ASM_SIMP_TAC[] THEN NO_TAC) THEN
+  TRY (EXISTS_TAC `f':num->num` THEN ASM_SIMP_TAC[] THEN NO_TAC) THEN
+  TRY (W pick_encoding) THEN ASM_SIMP_TAC WSTATE_LOOP_THMS THEN
+  REWRITE_TAC[AXIOMS; distinctness "wff"] THEN TRY (EXISTS_TAC
+    `\pl. f (f' ((1 <> encode_wff ps <> 0 <> 0 <> pl) + 1):num):num`) THEN
+  EVOLVESC_TO_IMPS_TAC' THEN ASM IMP_REWRITE_TAC WSTATE_LOOP_THMS THEN
+  REWRITE_TAC [EXCLUDED_MIDDLE]);;
+
+let MACHINE_COMPLETE = prove(`provable (0 @: 0) ==> {initial} -->_c {halted}`,
+  DISCH_TAC THEN MP_TAC (SPEC `0 @: 0` PROOFS_EXIST) THEN
+  ASM_REWRITE_TAC[] THEN STRIP_TAC THEN
+  MP_TAC (SPEC `(0 <> 0 <> 0 <> 0 <> (f 0)) + 1` NWSTATE_ALL_PROOFS) THEN
+  DISCH_TAC THEN EVOLVESC_TO_IMPS_TAC' THEN ASM IMP_REWRITE_TAC[] THEN
+  REWRITE_TAC[NOWFFSTATE; TMEVC_UNL; TMEVC_ABSL] THEN CONJ_TAC THENL [
+    REWRITE_TAC[TMEVC_DEF; IN_SING; IN_ELIM_THM] THEN MESON_TAC[HALTED_STICKY];
+    REWRITE_TAC[IN_ELIM_THM] THEN REPEAT STRIP_TAC THEN
+    POP_ASSUM SUBST_ALL_TAC THEN
+    IMP_REWRITE_TAC(mapfilter (MATCH_MP EVOLVEC_TO_IMP) WSTATE_LOOP_THMS) THEN
+    ASM_REWRITE_TAC[]]);;
+
+let MACHINE_CORRECT = prove(`initial -->_w halted <=> !w. provable w`,
+  MESON_TAC[wEXP1; MACHINE_SOUND; MACHINE_COMPLETE; TMEVC_DEF; IN_SING]);;
 (*
 
 unset_verbose_symbols();;
 set_margin 200;;
+Printexc.record_backtrace true;;
 
 install_user_printer("regname",fun f tm ->
   let nm,ty = dest_var tm in let n::ns = explode nm in
